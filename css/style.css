@@ -1,0 +1,1084 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+:root {
+    --primary-red: #8B0000;
+    --primary-blue: #0047AB;
+    --primary-gold: #FFD700;
+    --success-green: #4CAF50;
+    --danger-red: #f44336;
+    --warning-yellow: #FFC107;
+    --info-blue: #2196F3;
+    --gray: #666;
+    --light-gray: #999;
+    --border-color: #e0e0e0;
+}
+
+body {
+    font-family: 'Poppins', sans-serif;
+    min-height: 100vh;
+    position: relative;
+    color: #333;
+}
+
+/* Dashboard pages - no centering */
+body.dashboard {
+    display: block;
+}
+
+/* Auth pages - centered */
+body.auth-page {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+/* ==================== LAYERED BACKGROUND DESIGN ==================== */
+
+/* Layer 1: scc4.png - Full screen with small blur */
+.bg-scc4 {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-image: url('../images/scc4.png');
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
+    filter: blur(3px);
+    z-index: -10;
+}
+
+/* Layer 2: Dark overlay for better text readability */
+.bg-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.6);
+    z-index: -9;
+}
+
+/* Layer 3: BSIT.png - VERY LARGE, NOT BLURRY, Centered */
+.bg-bsit {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 800px;
+    height: 800px;  
+    background-image: url('../images/BSIT.png');
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+    opacity: 1.00;
+    pointer-events: none;
+    z-index: -8;
+    animation: gentleFloat 3s ease-in-out infinite;
+}
+
+@keyframes gentleFloat {
+    0%, 100% { transform: translate(-50%, -50%) scale(1); }
+    50% { transform: translate(-50%, -50%) scale(1.02); }
+}
+
+/* Layer 4: scc.png - LARGER on left side */
+.bg-scc-corner {
+    position: fixed;
+    bottom: 40px;
+    left: 40px;
+    width: 280px;
+    height: 280px;
+    background-image: url('../images/scc.png');
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+    opacity: 1.50;
+    pointer-events: none;
+    z-index: -8;
+}
+
+/* ==================== LOGIN & REGISTER FORMS ==================== */
+.login-container, .register-container {
+    background: rgba(255, 255, 255, 0.88);
+    backdrop-filter: blur(10px);
+    border-radius: 30px;
+    padding: 40px;
+    width: 100%;
+    max-width: 500px;
+    margin: 0 auto;
+    box-shadow: 0 25px 50px rgba(0,0,0,0.3);
+    animation: fadeInUp 0.6s ease;
+    position: relative;
+    z-index: 10;
+    border: 1px solid rgba(255,255,255,0.3);
+}
+
+.register-container { 
+    max-width: 600px; 
+}
+
+@keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(30px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Logo inside form - NOT transparent */
+.form-logo {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.form-logo img {
+    max-width: 220px;
+    height: auto;
+    margin-bottom: 10px;
+    opacity: 1;
+    filter: drop-shadow(0 4px 10px rgba(0,0,0,0.2));
+}
+
+.form-logo h1 {
+    font-size: 1.8rem;
+    color: var(--primary-red);
+    margin-bottom: 5px;
+}
+
+.form-logo p {
+    color: var(--gray);
+    font-size: 0.9rem;
+}
+
+/* Form Styles - Inputs are white for readability */
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 500;
+    color: #333;
+}
+
+.form-group input, .form-group select, .form-group textarea {
+    width: 100%;
+    padding: 12px 15px;
+    border: 2px solid rgba(0,0,0,0.1);
+    border-radius: 12px;
+    font-size: 1rem;
+    font-family: inherit;
+    background: white;
+}
+.form-group input:focus, .form-group select:focus {
+    outline: none;
+    border-color: var(--primary-red);
+    background: white;
+}
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+
+.btn-login, .btn-register, .btn-primary {
+    width: 100%;
+    padding: 14px;
+    background: linear-gradient(135deg, var(--primary-red), var(--primary-blue));
+    color: white;
+    border: none;
+    border-radius: 12px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+.btn-login:hover, .btn-register:hover, .btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(139,0,0,0.3);
+}
+
+.register-link, .login-link { text-align: center; margin-top: 20px; color: var(--gray); }
+.register-link a, .login-link a { color: var(--primary-red); font-weight: 600; }
+
+.error-message, .success-message {
+    padding: 12px;
+    border-radius: 10px;
+    margin-bottom: 20px;
+    border-left: 4px solid transparent;
+}
+.error-message { background: #f8d7da; color: #721c24; border-left-color: var(--danger-red); }
+.success-message { background: #d4edda; color: #155724; border-left-color: var(--success-green); }
+
+/* Tutor Fields */
+.tutor-fields {
+    background: rgba(0,0,0,0.05);
+    padding: 15px;
+    border-radius: 15px;
+    margin: 15px 0;
+    border: 1px solid rgba(0,0,0,0.1);
+}
+
+.subjects-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.subject-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: normal;
+    cursor: pointer;
+}
+.subject-checkbox input { width: 18px; height: 18px; cursor: pointer; }
+
+/* ==================== DASHBOARD LAYOUT - TRANSPARENT ==================== */
+.dashboard-container {
+    display: flex;
+    min-height: 100vh;
+}
+
+/* Sidebar - Semi-transparent with blur */
+.sidebar {
+    width: 280px;
+    background: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(12px);
+    color: white;
+    position: fixed;
+    left: 0;
+    top: 0;
+    height: 100%;
+    overflow-y: auto;
+    z-index: 100;
+    transition: all 0.3s;
+    border-right: 1px solid rgba(255,255,255,0.1);
+}
+
+.sidebar-header { 
+    padding: 25px; 
+    text-align: center; 
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+
+.sidebar-header img { 
+    max-width: 120px; 
+    margin-bottom: 10px;
+    opacity: 1;
+    filter: drop-shadow(0 2px 5px rgba(0,0,0,0.3));
+}
+
+.sidebar-header h3 { 
+    font-size: 1.2rem; 
+    color: white;
+}
+
+.sidebar-nav { padding: 20px 0; }
+.sidebar-link {
+    display: flex;
+    align-items: center;
+    padding: 12px 25px;
+    color: white;
+    text-decoration: none;
+    transition: all 0.3s;
+}
+.sidebar-link:hover, .sidebar-link.active { background: rgba(139,0,0,0.8); }
+.sidebar-link i { width: 25px; margin-right: 12px; font-size: 1.2rem; }
+
+.sidebar-footer {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 20px 25px;
+    border-top: 1px solid rgba(255,255,255,0.1);
+}
+
+.user-info { display: flex; align-items: center; gap: 12px; }
+.user-avatar {
+    width: 45px;
+    height: 45px;
+    background: linear-gradient(135deg, var(--primary-red), var(--primary-blue));
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    border: 2px solid var(--primary-gold);
+    overflow: hidden;
+}
+.user-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.user-name { font-weight: 600; font-size: 0.95rem; color: white; }
+.user-role { font-size: 0.8rem; opacity: 0.8; color: rgba(255,255,255,0.8); }
+
+.main-content {
+    margin-left: 280px;
+    padding: 20px;
+    width: 100%;
+    position: relative;
+    z-index: 10;
+}
+
+.menu-toggle {
+    display: none;
+    position: fixed;
+    top: 20px;
+    left: 20px;
+    z-index: 101;
+    background: var(--primary-red);
+    color: white;
+    border: none;
+    padding: 10px;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+/* ==================== CARDS & GRIDS - TRANSPARENT ==================== */
+.welcome-banner {
+    background: rgba(255, 255, 255, 0.88);
+    backdrop-filter: blur(10px);
+    border-radius: 20px;
+    padding: 25px 30px;
+    margin-bottom: 25px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    border: 1px solid rgba(255,255,255,0.3);
+}
+.welcome-banner h1 { color: var(--primary-red); margin-bottom: 5px; }
+.welcome-banner p { color: #333; }
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.stat-card {
+    background: rgba(255, 255, 255, 0.88);
+    backdrop-filter: blur(10px);
+    border-radius: 15px;
+    padding: 20px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    transition: all 0.3s;
+    border: 1px solid rgba(255,255,255,0.3);
+}
+.stat-card:hover { transform: translateY(-5px); box-shadow: 0 10px 30px rgba(0,0,0,0.15); background: rgba(255,255,255,0.95); }
+.stat-icon { font-size: 2rem; width: 50px; height: 50px; background: rgba(139,0,0,0.1); border-radius: 12px; display: flex; align-items: center; justify-content: center; }
+.stat-number { font-size: 1.8rem; font-weight: bold; color: var(--primary-red); }
+.stat-card div div { color: #333; }
+
+.quick-action-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 15px;
+    margin-bottom: 30px;
+}
+
+.quick-action-card {
+    background: rgba(255, 255, 255, 0.88);
+    backdrop-filter: blur(10px);
+    border-radius: 15px;
+    padding: 20px;
+    text-align: center;
+    text-decoration: none;
+    transition: all 0.3s;
+    border: 1px solid rgba(255,255,255,0.3);
+}
+.quick-action-card:hover { transform: translateY(-5px); background: var(--primary-red); color: white; }
+.quick-action-card i { font-size: 2rem; margin-bottom: 10px; color: var(--primary-red); }
+.quick-action-card:hover i { color: white; }
+.quick-action-card div { color: #333; }
+.quick-action-card:hover div { color: white; }
+
+.content-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+}
+
+.content-card {
+    background: rgba(255, 255, 255, 0.88);
+    backdrop-filter: blur(10px);
+    border-radius: 15px;
+    padding: 20px;
+    border: 1px solid rgba(255,255,255,0.3);
+}
+
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid var(--primary-red);
+}
+.card-header h3 { color: #333; }
+.view-all { color: var(--primary-red); font-size: 0.85rem; }
+
+/* ==================== TUTOR CARDS - TRANSPARENT ==================== */
+.tutors-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 25px;
+    margin-top: 25px;
+}
+
+.tutor-card {
+    background: rgba(255, 255, 255, 0.88);
+    backdrop-filter: blur(10px);
+    border-radius: 20px;
+    padding: 25px;
+    position: relative;
+    transition: all 0.3s;
+    border: 1px solid rgba(255,255,255,0.3);
+}
+.tutor-card:hover { transform: translateY(-5px); box-shadow: 0 10px 30px rgba(0,0,0,0.15); background: rgba(255,255,255,0.95); }
+
+.tutor-status {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+}
+.tutor-status.available { background: rgba(76,175,80,0.3); color: #2E7D32; border: 1px solid #4CAF50; }
+.tutor-status.unavailable { background: rgba(244,67,54,0.3); color: #C62828; border: 1px solid #f44336; }
+
+.tutor-avatar {
+    width: 80px;
+    height: 80px;
+    background: linear-gradient(135deg, var(--primary-red), var(--primary-blue));
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2.5rem;
+    font-weight: bold;
+    color: var(--primary-gold);
+    margin: 0 auto 15px;
+    border: 3px solid var(--primary-gold);
+    overflow: hidden;
+}
+.tutor-avatar img { width: 100%; height: 100%; object-fit: cover; }
+
+.tutor-card h3 { text-align: center; margin-bottom: 10px; color: #333; }
+.tutor-subjects { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-bottom: 15px; }
+.subject-tag { background: rgba(0,0,0,0.08); padding: 4px 12px; border-radius: 20px; font-size: 0.75rem; color: #333; }
+
+.tutor-stats {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    margin-bottom: 15px;
+    padding: 15px 0;
+    border-top: 1px solid rgba(0,0,0,0.1);
+    border-bottom: 1px solid rgba(0,0,0,0.1);
+}
+.tutor-stats .stat { text-align: center; }
+.tutor-stats .stat-label { font-size: 0.7rem; color: #666; }
+.tutor-stats .stat-value { font-weight: bold; color: #333; }
+
+.tutor-card .instructor-bio { color: #555; font-size: 0.85rem; text-align: center; margin-bottom: 15px; }
+
+.book-btn {
+    display: block;
+    width: 100%;
+    padding: 12px;
+    background: linear-gradient(135deg, var(--primary-red), var(--primary-blue));
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+.book-btn:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(139,0,0,0.3); }
+.book-btn.disabled { background: rgba(0,0,0,0.5); cursor: not-allowed; }
+
+/* ==================== BOOKING FORM - TRANSPARENT ==================== */
+.booking-form { max-width: 800px; margin: 0 auto; }
+.price-preview {
+    background: rgba(232,244,253,0.9);
+    border: 2px solid var(--info-blue);
+    border-radius: 15px;
+    padding: 20px;
+    margin: 20px 0;
+    text-align: center;
+}
+.price-amount { font-size: 1.8rem; font-weight: bold; color: var(--success-green); }
+
+/* ==================== BOOKINGS LIST - TRANSPARENT ==================== */
+.booking-card {
+    background: rgba(255, 255, 255, 0.88);
+    backdrop-filter: blur(10px);
+    border-radius: 15px;
+    padding: 20px;
+    margin-bottom: 20px;
+    transition: all 0.3s;
+    border: 1px solid rgba(255,255,255,0.3);
+}
+.booking-card:hover { transform: translateX(5px); box-shadow: 0 5px 15px rgba(0,0,0,0.1); background: rgba(255,255,255,0.95); }
+
+.booking-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid rgba(0,0,0,0.1);
+}
+
+.booking-date { color: #555; }
+
+.booking-card .booking-body div { color: #333; }
+
+.status-badge {
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.7rem;
+    font-weight: 600;
+}
+.status-approved, .status-paid { background: #4CAF50; color: white; }
+.status-pending { background: #FFC107; color: #333; }
+.status-completed { background: #2196F3; color: white; }
+.status-cancelled, .status-rejected { background: #f44336; color: white; }
+
+/* ==================== MODAL ==================== */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+}
+.modal-content {
+    background: white;
+    margin: 10% auto;
+    padding: 25px;
+    border-radius: 15px;
+    width: 90%;
+    max-width: 500px;
+    position: relative;
+}
+.close {
+    position: absolute;
+    right: 15px;
+    top: 10px;
+    font-size: 1.5rem;
+    cursor: pointer;
+}
+.star-rating {
+    display: flex;
+    flex-direction: row-reverse;
+    justify-content: flex-end;
+    gap: 5px;
+    margin: 15px 0;
+}
+.star-rating input { display: none; }
+.star-rating label { font-size: 2rem; color: #ddd; cursor: pointer; }
+.star-rating input:checked ~ label,
+.star-rating label:hover,
+.star-rating label:hover ~ label { color: #FFC107; }
+
+/* ==================== RESPONSIVE ==================== */
+@media (max-width: 768px) {
+    .sidebar { left: -280px; }
+    .sidebar.active { left: 0; }
+    .main-content { margin-left: 0; }
+    .menu-toggle { display: block; }
+    .content-grid { grid-template-columns: 1fr; }
+    .form-row { grid-template-columns: 1fr; }
+    .subjects-grid { grid-template-columns: 1fr; }
+    .bg-bsit { width: 500px; height: 500px; }
+    .bg-scc-corner { width: 180px; height: 180px; bottom: 20px; left: 20px; }
+    .form-logo img { max-width: 160px; }
+}
+
+@media (max-width: 480px) {
+    .login-container, .register-container { padding: 30px 20px; }
+    .stats-grid { grid-template-columns: 1fr; }
+    .quick-action-grid { grid-template-columns: 1fr; }
+    .tutors-grid { grid-template-columns: 1fr; }
+    .bg-bsit { width: 350px; height: 350px; }
+    .bg-scc-corner { width: 120px; height: 120px; }
+    .form-logo img { max-width: 130px; }
+}
+/* ==================== FACEBOOK-STYLE LOGIN & REGISTER ==================== */
+.auth-container {
+    display: flex;
+    min-height: 100vh;
+    width: 100%;
+}
+
+.auth-left {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 40px;
+    background: rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(5px);
+}
+
+.auth-left h1 {
+    font-size: 3rem;
+    color: var(--primary-red);
+    margin-bottom: 10px;
+}
+
+.auth-left p {
+    font-size: 1.2rem;
+    color: white;
+    max-width: 400px;
+    line-height: 1.5;
+}
+
+.auth-right {
+    width: 450px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px;
+    background: rgba(255, 255, 255, 0.92);
+    backdrop-filter: blur(12px);
+    box-shadow: -5px 0 20px rgba(0, 0, 0, 0.1);
+}
+
+.auth-form-container {
+    width: 100%;
+    max-width: 380px;
+}
+
+.auth-logo {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.auth-logo img {
+    max-width: 160px;
+    margin-bottom: 10px;
+}
+
+.auth-logo h2 {
+    color: var(--primary-red);
+    font-size: 1.5rem;
+}
+
+.auth-form .form-group {
+    margin-bottom: 15px;
+}
+
+.auth-form .form-group input {
+    width: 100%;
+    padding: 14px 16px;
+    border: 1px solid rgba(0, 0, 0, 0.15);
+    border-radius: 8px;
+    font-size: 1rem;
+    background: white;
+}
+
+.auth-form .form-group input:focus {
+    border-color: var(--primary-red);
+    outline: none;
+}
+
+.auth-form .btn-login,
+.auth-form .btn-register {
+    width: 100%;
+    padding: 14px;
+    background: linear-gradient(135deg, var(--primary-red), var(--primary-blue));
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.auth-form .btn-login:hover,
+.auth-form .btn-register:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(139, 0, 0, 0.3);
+}
+
+.auth-divider {
+    text-align: center;
+    margin: 20px 0;
+    position: relative;
+}
+
+.auth-divider::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: rgba(0, 0, 0, 0.1);
+}
+
+.auth-divider span {
+    background: white;
+    padding: 0 10px;
+    position: relative;
+    color: #666;
+    font-size: 0.85rem;
+}
+
+.auth-footer {
+    text-align: center;
+    margin-top: 20px;
+}
+
+.auth-footer a {
+    color: var(--primary-red);
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.auth-footer a:hover {
+    text-decoration: underline;
+}
+
+.auth-features {
+    margin-top: 40px;
+}
+
+.feature-item {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    margin-bottom: 20px;
+    color: white;
+}
+
+.feature-item i {
+    font-size: 1.5rem;
+    width: 40px;
+    height: 40px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.feature-item span {
+    font-size: 1rem;
+}
+
+/* Role Selection Toggle */
+.role-toggle {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.role-option {
+    flex: 1;
+    text-align: center;
+    padding: 10px;
+    border: 2px solid rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s;
+    background: white;
+}
+
+.role-option.selected {
+    border-color: var(--primary-red);
+    background: rgba(139, 0, 0, 0.05);
+}
+
+.role-option i {
+    font-size: 1.2rem;
+    margin-right: 5px;
+}
+
+/* Responsive */
+@media (max-width: 900px) {
+    .auth-container {
+        flex-direction: column;
+    }
+    
+    .auth-left {
+        display: none;
+    }
+    
+    .auth-right {
+        width: 100%;
+        min-height: 100vh;
+        padding: 20px;
+    }
+    
+    .auth-form-container {
+        max-width: 400px;
+        margin: 0 auto;
+    }
+}
+
+@media (max-width: 480px) {
+    .auth-right {
+        padding: 20px 15px;
+    }
+    
+    .auth-form .form-group input {
+        padding: 12px 14px;
+    }
+}
+/* ==================== FORCE TRANSPARENCY FOR ALL DASHBOARD ELEMENTS ==================== */
+
+/* Make all cards, containers, and boxes transparent */
+.welcome-banner,
+.stat-card,
+.content-card,
+.availability-card,
+.assignments-section,
+.unified-container,
+.booking-card,
+.request-card,
+.session-card,
+.completed-card,
+.tutor-card,
+.assignment-card,
+.payment-summary,
+.payment-form,
+.info-card,
+.booking-form,
+.price-preview {
+    background: rgba(255, 255, 255, 0.85) !important;
+    backdrop-filter: blur(10px) !important;
+    -webkit-backdrop-filter: blur(10px) !important;
+    border: 1px solid rgba(255, 255, 255, 0.3) !important;
+}
+
+/* Make sidebar semi-transparent */
+.sidebar {
+    background: rgba(0, 0, 0, 0.75) !important;
+    backdrop-filter: blur(12px) !important;
+    -webkit-backdrop-filter: blur(12px) !important;
+    border-right: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Make tables transparent */
+.user-table,
+.user-table th,
+.user-table td,
+.sessions-table,
+.sessions-table th,
+.sessions-table td,
+.grades-table,
+.grades-table th,
+.grades-table td {
+    background: transparent !important;
+}
+
+.user-table th,
+.sessions-table th,
+.grades-table th {
+    background: rgba(0, 0, 0, 0.6) !important;
+    color: white !important;
+}
+
+.user-table td,
+.sessions-table td,
+.grades-table td {
+    background: rgba(255, 255, 255, 0.85) !important;
+    color: #333 !important;
+}
+
+/* Make tabs transparent */
+.tabs {
+    background: rgba(0, 0, 0, 0.3) !important;
+}
+
+.tab-btn {
+    background: rgba(0, 0, 0, 0.5) !important;
+    color: white !important;
+}
+
+.tab-btn.active {
+    background: rgba(139, 0, 0, 0.8) !important;
+    color: white !important;
+}
+
+.tab-content {
+    background: transparent !important;
+}
+
+/* Make form inputs semi-transparent */
+.form-group input,
+.form-group select,
+.form-group textarea {
+    background: rgba(255, 255, 255, 0.9) !important;
+    border: 1px solid rgba(0, 0, 0, 0.2) !important;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+    background: white !important;
+}
+
+/* Make buttons semi-transparent */
+.btn-primary,
+.btn-login,
+.btn-register,
+.btn-submit,
+.book-btn,
+.action-btn {
+    background: rgba(139, 0, 0, 0.85) !important;
+    backdrop-filter: blur(5px) !important;
+    border: 1px solid rgba(255, 255, 255, 0.3) !important;
+    color: white !important;
+}
+
+.btn-primary:hover,
+.btn-login:hover,
+.btn-register:hover,
+.btn-submit:hover,
+.book-btn:hover,
+.action-btn:hover {
+    background: rgba(139, 0, 0, 1) !important;
+    transform: translateY(-2px);
+}
+
+/* Make status badges semi-transparent */
+.status-badge {
+    background: rgba(0, 0, 0, 0.7) !important;
+    backdrop-filter: blur(4px) !important;
+}
+
+.status-approved,
+.status-paid {
+    background: rgba(76, 175, 80, 0.85) !important;
+}
+
+.status-pending {
+    background: rgba(255, 193, 7, 0.85) !important;
+    color: #333 !important;
+}
+
+.status-completed {
+    background: rgba(33, 150, 243, 0.85) !important;
+}
+
+.status-cancelled,
+.status-rejected {
+    background: rgba(244, 67, 54, 0.85) !important;
+}
+
+/* Make modal background transparent but content white */
+.modal {
+    background: rgba(0, 0, 0, 0.6) !important;
+    backdrop-filter: blur(5px) !important;
+}
+
+.modal-content {
+    background: white !important;
+}
+
+/* Make filter selects transparent */
+.filter-select {
+    background: rgba(255, 255, 255, 0.9) !important;
+    border: 1px solid rgba(0, 0, 0, 0.2) !important;
+}
+
+/* Make pending items transparent */
+.pending-item,
+.request-item {
+    background: rgba(255, 255, 255, 0.85) !important;
+    border: 1px solid rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Make text colors readable on transparent backgrounds */
+.welcome-banner h1,
+.welcome-banner p,
+.card-header h3,
+.stat-card div div,
+.booking-info .info-label,
+.booking-info .info-value,
+.session-info h4,
+.session-info p,
+.session-info small,
+.completed-card .subject-name,
+.completed-details span {
+    color: #333 !important;
+}
+
+.stat-number {
+    color: var(--primary-red) !important;
+}
+
+.card-header h3 {
+    color: #333 !important;
+}
+
+.view-all {
+    color: var(--primary-red) !important;
+}
+
+/* Make sure background images are visible */
+.bg-scc4,
+.bg-overlay,
+.bg-bsit,
+.bg-scc-corner {
+    z-index: -10 !important;
+}
+
+/* Ensure main content has transparent background */
+.main-content,
+.dashboard-container {
+    background: transparent !important;
+}
+
+/* Make assignment cards transparent */
+.assignment-card {
+    background: rgba(255, 255, 255, 0.85) !important;
+    border: 1px solid rgba(255, 255, 255, 0.3) !important;
+}
+
+/* Make tutor cards transparent */
+.tutor-card {
+    background: rgba(255, 255, 255, 0.85) !important;
+    border: 1px solid rgba(255, 255, 255, 0.3) !important;
+}
+
+.tutor-card:hover {
+    background: rgba(255, 255, 255, 0.95) !important;
+}
+
+/* Make price preview transparent */
+.price-preview {
+    background: rgba(232, 244, 253, 0.9) !important;
+    border: 2px solid var(--info-blue) !important;
+}
+
+/* Make payment container transparent */
+.payment-container {
+    background: transparent !important;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .user-table td,
+    .sessions-table td,
+    .grades-table td {
+        background: rgba(255, 255, 255, 0.9) !important;
+    }
+    
+    .pending-item,
+    .request-item {
+        background: rgba(255, 255, 255, 0.9) !important;
+    }
+}
