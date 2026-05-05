@@ -33,6 +33,20 @@ if (!file_exists(__DIR__ . '/logs')) {
 // ============================================
 // 3. DATABASE CONFIGURATION
 // ============================================
+
+// Load .env file if it exists (keeps secrets out of code)
+$env_file = __DIR__ . '/.env';
+if (file_exists($env_file)) {
+    foreach (file($env_file, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {
+        if (strpos(trim($line), '#') === 0) continue;
+        if (strpos($line, '=') !== false) {
+            [$key, $val] = explode('=', $line, 2);
+            $_ENV[trim($key)] = trim($val);
+            putenv(trim($key) . '=' . trim($val));
+        }
+    }
+}
+
 define('DB_HOST', getenv('DB_HOST') ?: 'localhost');
 define('DB_USER', getenv('DB_USER') ?: 'root');
 define('DB_PASS', getenv('DB_PASS') ?: '');

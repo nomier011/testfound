@@ -1,0 +1,27 @@
+# Environment / secrets — NEVER commit these
+.env
+.env.local
+.env.production
+
+# Logs
+logs/
+*.log
+
+# Uploads (user files)
+uploads/
+
+# Debug files
+debug_*.php
+test_*.php
+fix_database.php
+create_accounts.php
+reset_passwords.php
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
