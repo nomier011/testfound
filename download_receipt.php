@@ -5,7 +5,7 @@ if (!isLoggedIn()) {
     redirect('login.php');
 }
 
-$booking_id = $_GET['booking_id'] ?? 0;
+$booking_id = sanitizeInt($_GET['booking_id'] ?? 0);
 $conn = getConnection();
 
 // Get booking details

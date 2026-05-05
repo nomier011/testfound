@@ -22,108 +22,129 @@ $stmt->execute([$user['id']]);
 $subjects = $stmt->fetchAll();
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    $subject_id = $_POST['subject_id'] ?? 0;
-    $title = $_POST['title'] ?? '';
-    $description = $_POST['description'] ?? '';
-    $due_date = $_POST['due_date'] ?? null;
-    $due_time = $_POST['due_time'] ?? null;
-    
-    if ($title && $subject_id) {
-        $stmt = $conn->prepare("INSERT INTO tasks (tutor_id, subject_id, title, description, due_date, due_time) VALUES (?, ?, ?, ?, ?, ?)");
-        $stmt->execute([$user['id'], $subject_id, $title, $description, $due_date, $due_time]);
-        setFlash("Assignment created successfully!", 'success');
-        redirect('tutor_dashboard.php');
+    if (!verifyCsrfToken($_POST['csrf_token'] ?? '')) {
+        setFlash("Invalid request. Please try again.", 'danger');
+        redirect('create_assignment.php');
+    }
+
+    $subject_id  = sanitizeInt($_POST['subject_id'] ?? 0);
+    $title       = trim($_POST['title'] ?? '');
+    $description = trim($_POST['description'] ?? '');
+    $due_date    = $_POST['due_date'] ?? null;
+    $due_time    = $_POST['due_time'] ?? null;
+
+    // Validate due date is not in the past
+    if ($due_date && strtotime($due_date) < strtotime('today')) {
+        setFlash("Due date cannot be in the past.", 'danger');
+        // fall through so form re-renders with values intact
+    } elseif ($title && $subject_id) {
+        // Verify subject belongs to this tutor
+        $stmt = $conn->prepare("SELECT id FROM tutor_subjects WHERE tutor_id = ? AND subject_id = ?");
+        $stmt->execute([$user['id'], $subject_id]);
+        if (!$stmt->fetch()) {
+            setFlash("Invalid subject selected.", 'danger');
+            redirect('create_assignment.php');
+        }
+
+        try {
+            // Generate task_number in PHP as a fallback in case the DB trigger is missing
+            $task_number = 'TSK-' . date('Ym') . '-' . str_pad(mt_rand(1, 999999), 6, '0', STR_PAD_LEFT);
+
+            $stmt = $conn->prepare("INSERT INTO tasks (task_number, tutor_id, subject_id, title, description, due_date, due_time) VALUES (?, ?, ?, ?, ?, ?, ?)");
+            $stmt->execute([$task_number, $user['id'], $subject_id, $title, $description, $due_date ?: null, $due_time ?: null]);
+            $task_id = $conn->lastInsertId();
+
+            // Notify all students who have booked this tutor
+            $notify_stmt = $conn->prepare("
+                SELECT DISTINCT b.student_id FROM bookings b
+                WHERE b.tutor_id = ? AND b.status IN ('approved', 'completed')
+            ");
+            $notify_stmt->execute([$user['id']]);
+            $students = $notify_stmt->fetchAll(PDO::FETCH_COLUMN);
+
+            if (!empty($students)) {
+                $due_label = $due_date ? ' (Due: ' . date('M d, Y', strtotime($due_date)) . ')' : '';
+                sendBulkNotification(
+                    $students,
+                    "New assignment posted by {$user['full_name']}: \"{$title}\"{$due_label}",
+                    'assignment'
+                );
+            }
+
+            setFlash("Assignment created successfully!", 'success');
+            redirect('tutor_dashboard.php');
+        } catch (PDOException $e) {
+            error_log("Create assignment error: " . $e->getMessage());
+            setFlash("Failed to create assignment: " . $e->getMessage(), 'danger');
+        }
     } else {
-        setFlash("Please fill in all required fields", 'danger');
+        setFlash("Please fill in all required fields.", 'danger');
     }
 }
 ?>
 
 <?php include 'header.php'; ?>
 
-<div class="dashboard-container">
-    <div class="sidebar">
-        <div class="sidebar-header">
-            <img src="images/scclogo.png" alt="SCC Logo">
-            <h3>Tutor Menu</h3>
-        </div>
-        <nav class="sidebar-nav">
-            <a href="tutor_dashboard.php" class="sidebar-link"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
-            <a href="my_bookings.php" class="sidebar-link"><i class="fas fa-calendar-alt"></i> My Sessions</a>
-            <a href="create_assignment.php" class="sidebar-link active"><i class="fas fa-plus-circle"></i> Create Assignment</a>
-            <a href="profile.php" class="sidebar-link"><i class="fas fa-user-circle"></i> Profile</a>
-            <a href="logout.php" class="sidebar-link logout"><i class="fas fa-sign-out-alt"></i> Logout</a>
-        </nav>
-        <div class="sidebar-footer">
-            <div class="user-info">
-                <div class="user-avatar">
-                    <?php if ($user['profile_pic']): ?>
-                        <img src="uploads/<?php echo $user['profile_pic']; ?>">
-                    <?php else: ?>
-                        <?php echo substr($user['full_name'], 0, 1); ?>
-                    <?php endif; ?>
-                </div>
-                <div>
-                    <div class="user-name"><?php echo htmlspecialchars($user['full_name']); ?></div>
-                    <div class="user-role">Tutor</div>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <div class="main-content">
-        <button class="menu-toggle" onclick="document.querySelector('.sidebar').classList.toggle('active')">
-            <i class="fas fa-bars"></i>
-        </button>
-        
-        <div class="welcome-banner">
+<div class="page-wrapper">
+    <?php include 'sidebar.php'; ?>
+
+    <div class="page-hero">
+        <div class="page-hero-content">
             <h1><i class="fas fa-plus-circle"></i> Create Assignment</h1>
             <p>Create a new assignment for your students</p>
         </div>
-        
+    </div>
+
+    <div class="page-inner">
+
         <div class="content-card">
             <form method="POST" action="">
+                <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars(generateCsrfToken()); ?>">
                 <div class="form-group">
-                    <label>Subject <span class="required">*</span></label>
+                    <label>Subject <span style="color:#dc2626;">*</span></label>
                     <select name="subject_id" required>
                         <option value="">Select Subject</option>
                         <?php foreach ($subjects as $subject): ?>
-                            <option value="<?php echo $subject['id']; ?>"><?php echo htmlspecialchars($subject['name']); ?></option>
+                            <option value="<?php echo $subject['id']; ?>" <?php echo (isset($subject_id) && $subject_id == $subject['id']) ? 'selected' : ''; ?>>
+                                <?php echo htmlspecialchars($subject['name']); ?>
+                            </option>
                         <?php endforeach; ?>
                     </select>
                 </div>
-                
+
                 <div class="form-group">
-                    <label>Assignment Title <span class="required">*</span></label>
-                    <input type="text" name="title" placeholder="e.g., Chapter 1 Quiz, Programming Exercise 1" required>
+                    <label>Assignment Title <span style="color:#dc2626;">*</span></label>
+                    <input type="text" name="title" value="<?php echo htmlspecialchars($title ?? ''); ?>" placeholder="e.g., Chapter 1 Quiz, Programming Exercise 1" required>
                 </div>
-                
+
                 <div class="form-group">
                     <label>Description / Instructions</label>
-                    <textarea name="description" rows="5" placeholder="Describe the assignment, instructions, and requirements..."></textarea>
+                    <textarea name="description" rows="5" placeholder="Describe the assignment, instructions, and requirements..."><?php echo htmlspecialchars($description ?? ''); ?></textarea>
                 </div>
-                
-                <div class="form-row">
+
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
                     <div class="form-group">
                         <label>Due Date</label>
-                        <input type="date" name="due_date">
+                        <input type="date" name="due_date" value="<?php echo htmlspecialchars($due_date ?? ''); ?>">
                     </div>
                     <div class="form-group">
                         <label>Due Time</label>
-                        <input type="time" name="due_time">
+                        <input type="time" name="due_time" value="<?php echo htmlspecialchars($due_time ?? ''); ?>">
                     </div>
                 </div>
-                
-                <div class="form-actions">
+
+                <div style="display:flex;gap:12px;margin-top:20px;">
                     <button type="submit" class="btn-primary">Create Assignment</button>
                     <a href="tutor_dashboard.php" class="btn-secondary">Cancel</a>
                 </div>
             </form>
         </div>
-        
-        <div class="info-card">
-            <h4><i class="fas fa-info-circle"></i> Assignment Tips</h4>
-            <ul>
+
+        <div class="content-card" style="margin-top:0;">
+            <div class="card-header">
+                <h3><i class="fas fa-info-circle"></i> Assignment Tips</h3>
+            </div>
+            <ul style="padding-left:20px;color:#4b5563;line-height:2;">
                 <li>Create clear and specific assignment titles</li>
                 <li>Provide detailed instructions for students</li>
                 <li>Set realistic due dates</li>
@@ -131,66 +152,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 <li>You can view submissions from your dashboard</li>
             </ul>
         </div>
+
     </div>
 </div>
-
-<style>
-.required {
-    color: var(--danger-red);
-    margin-left: 3px;
-}
-
-.form-actions {
-    display: flex;
-    gap: 15px;
-    margin-top: 20px;
-}
-
-.btn-secondary {
-    background: #666;
-    color: white;
-    padding: 12px 20px;
-    border: none;
-    border-radius: 8px;
-    font-weight: 600;
-    cursor: pointer;
-    text-decoration: none;
-    text-align: center;
-    transition: all 0.3s;
-}
-
-.btn-secondary:hover {
-    background: #555;
-}
-
-.info-card {
-    background: rgba(255,255,255,0.88);
-    backdrop-filter: blur(10px);
-    border-radius: 15px;
-    padding: 20px;
-    margin-top: 20px;
-    border: 1px solid rgba(255,255,255,0.3);
-}
-
-.info-card h4 {
-    color: var(--primary-red);
-    margin-bottom: 10px;
-}
-
-.info-card ul {
-    padding-left: 20px;
-    color: #333;
-}
-
-.info-card li {
-    margin-bottom: 5px;
-}
-
-@media (max-width: 768px) {
-    .form-actions {
-        flex-direction: column;
-    }
-}
-</style>
 
 <?php include 'footer.php'; ?>

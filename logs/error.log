@@ -1,0 +1,169 @@
+[26-Apr-2026 10:48:10 Asia/Manila] PHP Fatal error:  Uncaught PDOException: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'last_active' in 'field list' in C:\xampp\htdocs\testfound\login.php:60
+Stack trace:
+#0 C:\xampp\htdocs\testfound\login.php(60): PDO->prepare('UPDATE users SE...')
+#1 {main}
+  thrown in C:\xampp\htdocs\testfound\login.php on line 60
+[26-Apr-2026 10:48:13 Asia/Manila] PHP Fatal error:  Uncaught PDOException: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'last_active' in 'field list' in C:\xampp\htdocs\testfound\config.php:247
+Stack trace:
+#0 C:\xampp\htdocs\testfound\config.php(247): PDO->prepare('UPDATE users SE...')
+#1 C:\xampp\htdocs\testfound\config.php(459): updateUserLastActive(4)
+#2 C:\xampp\htdocs\testfound\register.php(2): require_once('C:\\xampp\\htdocs...')
+#3 {main}
+  thrown in C:\xampp\htdocs\testfound\config.php on line 247
+[26-Apr-2026 10:57:59 Asia/Manila] PHP Fatal error:  Uncaught PDOException: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'last_active' in 'field list' in C:\xampp\htdocs\testfound\config.php:247
+Stack trace:
+#0 C:\xampp\htdocs\testfound\config.php(247): PDO->prepare('UPDATE users SE...')
+#1 C:\xampp\htdocs\testfound\config.php(459): updateUserLastActive(4)
+#2 C:\xampp\htdocs\testfound\register.php(2): require_once('C:\\xampp\\htdocs...')
+#3 {main}
+  thrown in C:\xampp\htdocs\testfound\config.php on line 247
+[26-Apr-2026 10:58:02 Asia/Manila] PHP Fatal error:  Uncaught PDOException: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'last_active' in 'field list' in C:\xampp\htdocs\testfound\config.php:247
+Stack trace:
+#0 C:\xampp\htdocs\testfound\config.php(247): PDO->prepare('UPDATE users SE...')
+#1 C:\xampp\htdocs\testfound\config.php(459): updateUserLastActive(4)
+#2 C:\xampp\htdocs\testfound\login.php(2): require_once('C:\\xampp\\htdocs...')
+#3 {main}
+  thrown in C:\xampp\htdocs\testfound\config.php on line 247
+[26-Apr-2026 10:58:10 Asia/Manila] PHP Fatal error:  Uncaught PDOException: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'last_active' in 'field list' in C:\xampp\htdocs\testfound\config.php:247
+Stack trace:
+#0 C:\xampp\htdocs\testfound\config.php(247): PDO->prepare('UPDATE users SE...')
+#1 C:\xampp\htdocs\testfound\config.php(459): updateUserLastActive(4)
+#2 C:\xampp\htdocs\testfound\login.php(2): require_once('C:\\xampp\\htdocs...')
+#3 {main}
+  thrown in C:\xampp\htdocs\testfound\config.php on line 247
+[26-Apr-2026 10:58:22 Asia/Manila] PHP Fatal error:  Uncaught PDOException: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'last_active' in 'field list' in C:\xampp\htdocs\testfound\config.php:247
+Stack trace:
+#0 C:\xampp\htdocs\testfound\config.php(247): PDO->prepare('UPDATE users SE...')
+#1 C:\xampp\htdocs\testfound\config.php(459): updateUserLastActive(4)
+#2 C:\xampp\htdocs\testfound\login.php(2): require_once('C:\\xampp\\htdocs...')
+#3 {main}
+  thrown in C:\xampp\htdocs\testfound\config.php on line 247
+[26-Apr-2026 10:58:23 Asia/Manila] PHP Fatal error:  Uncaught PDOException: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'last_active' in 'field list' in C:\xampp\htdocs\testfound\config.php:247
+Stack trace:
+#0 C:\xampp\htdocs\testfound\config.php(247): PDO->prepare('UPDATE users SE...')
+#1 C:\xampp\htdocs\testfound\config.php(459): updateUserLastActive(4)
+#2 C:\xampp\htdocs\testfound\login.php(2): require_once('C:\\xampp\\htdocs...')
+#3 {main}
+  thrown in C:\xampp\htdocs\testfound\config.php on line 247
+[26-Apr-2026 10:58:23 Asia/Manila] PHP Fatal error:  Uncaught PDOException: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'last_active' in 'field list' in C:\xampp\htdocs\testfound\config.php:247
+Stack trace:
+#0 C:\xampp\htdocs\testfound\config.php(247): PDO->prepare('UPDATE users SE...')
+#1 C:\xampp\htdocs\testfound\config.php(459): updateUserLastActive(4)
+#2 C:\xampp\htdocs\testfound\login.php(2): require_once('C:\\xampp\\htdocs...')
+#3 {main}
+  thrown in C:\xampp\htdocs\testfound\config.php on line 247
+[26-Apr-2026 10:58:23 Asia/Manila] PHP Fatal error:  Uncaught PDOException: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'last_active' in 'field list' in C:\xampp\htdocs\testfound\config.php:247
+Stack trace:
+#0 C:\xampp\htdocs\testfound\config.php(247): PDO->prepare('UPDATE users SE...')
+#1 C:\xampp\htdocs\testfound\config.php(459): updateUserLastActive(4)
+#2 C:\xampp\htdocs\testfound\login.php(2): require_once('C:\\xampp\\htdocs...')
+#3 {main}
+  thrown in C:\xampp\htdocs\testfound\config.php on line 247
+[26-Apr-2026 10:58:24 Asia/Manila] PHP Fatal error:  Uncaught PDOException: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'last_active' in 'field list' in C:\xampp\htdocs\testfound\config.php:247
+Stack trace:
+#0 C:\xampp\htdocs\testfound\config.php(247): PDO->prepare('UPDATE users SE...')
+#1 C:\xampp\htdocs\testfound\config.php(459): updateUserLastActive(4)
+#2 C:\xampp\htdocs\testfound\login.php(2): require_once('C:\\xampp\\htdocs...')
+#3 {main}
+  thrown in C:\xampp\htdocs\testfound\config.php on line 247
+[26-Apr-2026 10:59:19 Asia/Manila] PHP Fatal error:  Uncaught PDOException: SQLSTATE[23000]: Integrity constraint violation: 1452 Cannot add or update a child row: a foreign key constraint fails (`bsit_tutoring_db`.`activity_logs`, CONSTRAINT `activity_logs_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL) in C:\xampp\htdocs\testfound\config.php:405
+Stack trace:
+#0 C:\xampp\htdocs\testfound\config.php(405): PDOStatement->execute(Array)
+#1 C:\xampp\htdocs\testfound\login.php(78): logActivity(0, 'login_failed', 'Failed login at...')
+#2 {main}
+  thrown in C:\xampp\htdocs\testfound\config.php on line 405
+[26-Apr-2026 10:59:50 Asia/Manila] PHP Fatal error:  Uncaught PDOException: SQLSTATE[23000]: Integrity constraint violation: 1452 Cannot add or update a child row: a foreign key constraint fails (`bsit_tutoring_db`.`activity_logs`, CONSTRAINT `activity_logs_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL) in C:\xampp\htdocs\testfound\config.php:405
+Stack trace:
+#0 C:\xampp\htdocs\testfound\config.php(405): PDOStatement->execute(Array)
+#1 C:\xampp\htdocs\testfound\login.php(78): logActivity(0, 'login_failed', 'Failed login at...')
+#2 {main}
+  thrown in C:\xampp\htdocs\testfound\config.php on line 405
+[26-Apr-2026 11:00:59 Asia/Manila] PHP Fatal error:  Uncaught PDOException: SQLSTATE[23000]: Integrity constraint violation: 1452 Cannot add or update a child row: a foreign key constraint fails (`bsit_tutoring_db`.`activity_logs`, CONSTRAINT `activity_logs_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL) in C:\xampp\htdocs\testfound\config.php:405
+Stack trace:
+#0 C:\xampp\htdocs\testfound\config.php(405): PDOStatement->execute(Array)
+#1 C:\xampp\htdocs\testfound\login.php(78): logActivity(0, 'login_failed', 'Failed login at...')
+#2 {main}
+  thrown in C:\xampp\htdocs\testfound\config.php on line 405
+[26-Apr-2026 11:09:30 Asia/Manila] PHP Fatal error:  Uncaught PDOException: SQLSTATE[23000]: Integrity constraint violation: 1452 Cannot add or update a child row: a foreign key constraint fails (`bsit_tutoring_db`.`activity_logs`, CONSTRAINT `activity_logs_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL) in C:\xampp\htdocs\testfound\config.php:405
+Stack trace:
+#0 C:\xampp\htdocs\testfound\config.php(405): PDOStatement->execute(Array)
+#1 C:\xampp\htdocs\testfound\login.php(78): logActivity(0, 'login_failed', 'Failed login at...')
+#2 {main}
+  thrown in C:\xampp\htdocs\testfound\config.php on line 405
+[26-Apr-2026 11:10:01 Asia/Manila] PHP Fatal error:  Uncaught PDOException: SQLSTATE[23000]: Integrity constraint violation: 1452 Cannot add or update a child row: a foreign key constraint fails (`bsit_tutoring_db`.`activity_logs`, CONSTRAINT `activity_logs_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL) in C:\xampp\htdocs\testfound\config.php:405
+Stack trace:
+#0 C:\xampp\htdocs\testfound\config.php(405): PDOStatement->execute(Array)
+#1 C:\xampp\htdocs\testfound\login.php(78): logActivity(0, 'login_failed', 'Failed login at...')
+#2 {main}
+  thrown in C:\xampp\htdocs\testfound\config.php on line 405
+[26-Apr-2026 14:42:24 Asia/Manila] Booking error: SQLSTATE[23000]: Integrity constraint violation: 1062 Duplicate entry '' for key 'booking_number'
+[26-Apr-2026 14:43:25 Asia/Manila] Booking error: SQLSTATE[23000]: Integrity constraint violation: 1062 Duplicate entry '' for key 'booking_number'
+[26-Apr-2026 14:46:33 Asia/Manila] Booking error: SQLSTATE[23000]: Integrity constraint violation: 1062 Duplicate entry '' for key 'booking_number'
+[26-Apr-2026 15:04:10 Asia/Manila] Booking error: SQLSTATE[23000]: Integrity constraint violation: 1062 Duplicate entry '' for key 'booking_number'
+[26-Apr-2026 15:06:56 Asia/Manila] Booking error: SQLSTATE[23000]: Integrity constraint violation: 1062 Duplicate entry '' for key 'booking_number'
+[26-Apr-2026 15:07:02 Asia/Manila] Booking error: SQLSTATE[23000]: Integrity constraint violation: 1062 Duplicate entry '' for key 'booking_number'
+[26-Apr-2026 15:07:21 Asia/Manila] Booking error: SQLSTATE[23000]: Integrity constraint violation: 1062 Duplicate entry '' for key 'booking_number'
+[26-Apr-2026 15:09:07 Asia/Manila] Booking error: SQLSTATE[23000]: Integrity constraint violation: 1062 Duplicate entry '' for key 'booking_number'
+[26-Apr-2026 15:09:15 Asia/Manila] Booking error: SQLSTATE[23000]: Integrity constraint violation: 1062 Duplicate entry '' for key 'booking_number'
+[26-Apr-2026 15:11:19 Asia/Manila] Booking error: SQLSTATE[23000]: Integrity constraint violation: 1062 Duplicate entry '' for key 'booking_number'
+[26-Apr-2026 15:11:28 Asia/Manila] Booking error: SQLSTATE[23000]: Integrity constraint violation: 1062 Duplicate entry '' for key 'booking_number'
+[26-Apr-2026 15:31:36 Asia/Manila] Cash payment error: SQLSTATE[23000]: Integrity constraint violation: 1062 Duplicate entry '' for key 'transaction_number'
+[26-Apr-2026 15:31:40 Asia/Manila] Cash payment error: SQLSTATE[23000]: Integrity constraint violation: 1062 Duplicate entry '' for key 'transaction_number'
+[26-Apr-2026 15:35:27 Asia/Manila] Cash payment error: SQLSTATE[23000]: Integrity constraint violation: 1062 Duplicate entry '' for key 'transaction_number'
+[26-Apr-2026 15:40:14 Asia/Manila] Payment record error: SQLSTATE[23000]: Integrity constraint violation: 1062 Duplicate entry '' for key 'transaction_number'
+[26-Apr-2026 15:42:39 Asia/Manila] Cash payment error: SQLSTATE[23000]: Integrity constraint violation: 1062 Duplicate entry '' for key 'transaction_number'
+[26-Apr-2026 15:42:45 Asia/Manila] Cash payment error: SQLSTATE[23000]: Integrity constraint violation: 1062 Duplicate entry '' for key 'transaction_number'
+[26-Apr-2026 15:42:45 Asia/Manila] Cash payment error: SQLSTATE[23000]: Integrity constraint violation: 1062 Duplicate entry '' for key 'transaction_number'
+[26-Apr-2026 16:11:11 Asia/Manila] PHP Warning:  Undefined array key "meet_link" in C:\xampp\htdocs\testfound\tutor_dashboard.php on line 218
+[26-Apr-2026 16:11:11 Asia/Manila] PHP Warning:  Undefined array key "meet_link" in C:\xampp\htdocs\testfound\tutor_dashboard.php on line 218
+[26-Apr-2026 16:11:52 Asia/Manila] PHP Fatal error:  Uncaught PDOException: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'meet_link' in 'field list' in C:\xampp\htdocs\testfound\set_meet_link.php:46
+Stack trace:
+#0 C:\xampp\htdocs\testfound\set_meet_link.php(46): PDO->prepare('UPDATE bookings...')
+#1 {main}
+  thrown in C:\xampp\htdocs\testfound\set_meet_link.php on line 46
+[26-Apr-2026 16:14:29 Asia/Manila] PHP Warning:  Undefined array key "meet_link" in C:\xampp\htdocs\testfound\tutor_dashboard.php on line 218
+[26-Apr-2026 16:14:29 Asia/Manila] PHP Warning:  Undefined array key "meet_link" in C:\xampp\htdocs\testfound\tutor_dashboard.php on line 218
+[27-Apr-2026 00:23:33 Asia/Manila] PHP Fatal error:  Uncaught PDOException: SQLSTATE[23000]: Integrity constraint violation: 1452 Cannot add or update a child row: a foreign key constraint fails (`bsit_tutoring_db`.`notifications`, CONSTRAINT `notifications_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE) in C:\xampp\htdocs\testfound\config.php:263
+Stack trace:
+#0 C:\xampp\htdocs\testfound\config.php(263): PDOStatement->execute(Array)
+#1 C:\xampp\htdocs\testfound\register.php(58): sendNotification(1, 'New student reg...', 'registration')
+#2 {main}
+  thrown in C:\xampp\htdocs\testfound\config.php on line 263
+[27-Apr-2026 08:22:20 Asia/Manila] PayMongo error: 
+[27-Apr-2026 08:22:24 Asia/Manila] PayMongo error: 
+[27-Apr-2026 08:22:32 Asia/Manila] PayMongo error: 
+[27-Apr-2026 18:50:53 Asia/Manila] PHP Fatal error:  Uncaught PDOException: SQLSTATE[23000]: Integrity constraint violation: 1452 Cannot add or update a child row: a foreign key constraint fails (`bsit_tutoring_db`.`notifications`, CONSTRAINT `notifications_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE) in C:\xampp\htdocs\testfound\config.php:263
+Stack trace:
+#0 C:\xampp\htdocs\testfound\config.php(263): PDOStatement->execute(Array)
+#1 C:\xampp\htdocs\testfound\register.php(58): sendNotification(1, 'New student reg...', 'registration')
+#2 {main}
+  thrown in C:\xampp\htdocs\testfound\config.php on line 263
+[27-Apr-2026 19:02:19 Asia/Manila] PHP Fatal error:  Uncaught PDOException: SQLSTATE[23000]: Integrity constraint violation: 1452 Cannot add or update a child row: a foreign key constraint fails (`bsit_tutoring_db`.`notifications`, CONSTRAINT `notifications_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE) in C:\xampp\htdocs\testfound\config.php:263
+Stack trace:
+#0 C:\xampp\htdocs\testfound\config.php(263): PDOStatement->execute(Array)
+#1 C:\xampp\htdocs\testfound\register.php(58): sendNotification(1, 'New student reg...', 'registration')
+#2 {main}
+  thrown in C:\xampp\htdocs\testfound\config.php on line 263
+[29-Apr-2026 13:01:29 Asia/Manila] PHP Fatal error:  Uncaught PDOException: SQLSTATE[23000]: Integrity constraint violation: 1452 Cannot add or update a child row: a foreign key constraint fails (`bsit_tutoring_db`.`notifications`, CONSTRAINT `notifications_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE) in C:\xampp\htdocs\testfound\config.php:258
+Stack trace:
+#0 C:\xampp\htdocs\testfound\config.php(258): PDOStatement->execute(Array)
+#1 C:\xampp\htdocs\testfound\register.php(58): sendNotification(1, 'New student reg...', 'registration')
+#2 {main}
+  thrown in C:\xampp\htdocs\testfound\config.php on line 258
+[29-Apr-2026 13:23:15 Asia/Manila] Create assignment error: SQLSTATE[23000]: Integrity constraint violation: 1062 Duplicate entry '' for key 'task_number'
+[29-Apr-2026 13:23:47 Asia/Manila] Create assignment error: SQLSTATE[23000]: Integrity constraint violation: 1062 Duplicate entry '' for key 'task_number'
+[29-Apr-2026 13:24:12 Asia/Manila] Create assignment error: SQLSTATE[23000]: Integrity constraint violation: 1062 Duplicate entry '' for key 'task_number'
+[29-Apr-2026 13:27:54 Asia/Manila] Create assignment error: SQLSTATE[23000]: Integrity constraint violation: 1062 Duplicate entry '' for key 'task_number'
+[29-Apr-2026 13:56:00 Asia/Manila] Admin POST received. csrf_posted=bd6feabade9161bcf9884d1804bd62edebeddb5458fcd42e4670edaa79301381 csrf_session=bd6feabade9161bcf9884d1804bd62edebeddb5458fcd42e4670edaa79301381 action keys=csrf_token,user_id,redirect_tab
+[29-Apr-2026 13:56:07 Asia/Manila] Admin POST received. csrf_posted=bd6feabade9161bcf9884d1804bd62edebeddb5458fcd42e4670edaa79301381 csrf_session=bd6feabade9161bcf9884d1804bd62edebeddb5458fcd42e4670edaa79301381 action keys=csrf_token,user_id,redirect_tab
+[29-Apr-2026 14:11:03 Asia/Manila] Admin POST received. csrf_posted=bd6feabade9161bcf9884d1804bd62edebeddb5458fcd42e4670edaa79301381 csrf_session=bd6feabade9161bcf9884d1804bd62edebeddb5458fcd42e4670edaa79301381 action keys=csrf_token,user_id,redirect_tab
+[29-Apr-2026 14:22:38 Asia/Manila] payment_success: booking_id=18 checkout_id=cs_28cdeb06410e2e904ac94af1 pm_status=unknown
+[29-Apr-2026 14:22:38 Asia/Manila] payment_success: PayMongo status is 'unknown' for booking 18 — not updating DB
+[29-Apr-2026 14:29:06 Asia/Manila] payment_success: booking_id=18 checkout_id=cs_2675d3628dd01d8b74c7a4fd pm_status=unknown
+[29-Apr-2026 14:29:06 Asia/Manila] payment_success: PayMongo status is 'unknown' for booking 18 — not updating DB
+[29-Apr-2026 14:31:52 Asia/Manila] payment_success: booking_id=18 checkout_id=cs_e17cd32d11c4d5869d988b92 pm_status=unknown
+[29-Apr-2026 14:31:52 Asia/Manila] payment_success: PayMongo status is 'unknown' for booking 18 — not updating DB
+[29-Apr-2026 15:42:48 Asia/Manila] payment_success: booking_id=19 checkout_id=cs_24b298e3e7305e71b2c84eff pm_status=unknown
+[29-Apr-2026 15:42:48 Asia/Manila] payment_success: PayMongo status is 'unknown' for booking 19 — not updating DB
+[29-Apr-2026 16:45:57 Asia/Manila] payment_success: booking_id=22 checkout_id=cs_3c7ab41ce3c0c0c99aa36635 pm_status=unknown
+[29-Apr-2026 16:45:57 Asia/Manila] payment_success: PayMongo status is 'unknown' for booking 22 — not updating DB

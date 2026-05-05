@@ -6,7 +6,7 @@ if (!isLoggedIn()) {
     exit();
 }
 
-$subject_id = $_GET['subject_id'] ?? 0;
+$subject_id = sanitizeInt($_GET['subject_id'] ?? 0);
 $conn = getConnection();
 
 $stmt = $conn->prepare("

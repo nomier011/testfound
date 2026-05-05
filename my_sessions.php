@@ -12,37 +12,35 @@ $conn = getConnection();
 // Get sessions based on role
 if ($user['role'] == 'student') {
     $stmt = $conn->prepare("
-        SELECT s.*, sub.name as subject_name, u.full_name as other_party, u.profile_pic as other_pic,
-               u2.full_name as tutor_name
-        FROM sessions s
-        JOIN subjects sub ON s.subject_id = sub.id
-        JOIN users u ON s.tutor_id = u.id
-        JOIN users u2 ON s.tutor_id = u2.id
-        WHERE s.student_id = ?
-        ORDER BY s.session_date DESC
+        SELECT b.*, sub.name as subject_name, u.full_name as other_party, u.profile_pic as other_pic,
+               u.full_name as tutor_name
+        FROM bookings b
+        JOIN subjects sub ON b.subject_id = sub.id
+        JOIN users u ON b.tutor_id = u.id
+        WHERE b.student_id = ?
+        ORDER BY b.booking_date DESC
     ");
     $stmt->execute([$user['id']]);
 } elseif ($user['role'] == 'tutor') {
     $stmt = $conn->prepare("
-        SELECT s.*, sub.name as subject_name, u.full_name as other_party, u.profile_pic as other_pic,
-               u2.full_name as student_name
-        FROM sessions s
-        JOIN subjects sub ON s.subject_id = sub.id
-        JOIN users u ON s.student_id = u.id
-        JOIN users u2 ON s.student_id = u2.id
-        WHERE s.tutor_id = ?
-        ORDER BY s.session_date DESC
+        SELECT b.*, sub.name as subject_name, u.full_name as other_party, u.profile_pic as other_pic,
+               u.full_name as student_name
+        FROM bookings b
+        JOIN subjects sub ON b.subject_id = sub.id
+        JOIN users u ON b.student_id = u.id
+        WHERE b.tutor_id = ?
+        ORDER BY b.booking_date DESC
     ");
     $stmt->execute([$user['id']]);
 } else {
     $stmt = $conn->prepare("
-        SELECT s.*, sub.name as subject_name, 
+        SELECT b.*, sub.name as subject_name,
                u1.full_name as student_name, u2.full_name as tutor_name
-        FROM sessions s
-        JOIN subjects sub ON s.subject_id = sub.id
-        JOIN users u1 ON s.student_id = u1.id
-        JOIN users u2 ON s.tutor_id = u2.id
-        ORDER BY s.session_date DESC
+        FROM bookings b
+        JOIN subjects sub ON b.subject_id = sub.id
+        JOIN users u1 ON b.student_id = u1.id
+        JOIN users u2 ON b.tutor_id = u2.id
+        ORDER BY b.booking_date DESC
     ");
     $stmt->execute();
 }
@@ -160,7 +158,7 @@ $sessions = $stmt->fetchAll();
                             <td><?php echo $session['student_name']; ?></td>
                             <td><?php echo $session['tutor_name']; ?></td>
                         <?php endif; ?>
-                        <td><?php echo date('M d, Y', strtotime($session['session_date'])); ?></td>
+                        <td><?php echo date('M d, Y', strtotime($session['booking_date'])); ?></td>
                         <td><?php echo date('h:i A', strtotime($session['start_time'])); ?> - <?php echo date('h:i A', strtotime($session['end_time'])); ?></td>
                         <td><?php echo $session['duration']; ?> hrs</td>
                         <td>₱<?php echo number_format($session['amount'], 2); ?></td>
@@ -168,26 +166,28 @@ $sessions = $stmt->fetchAll();
                         <td><span class="status-badge status-<?php echo $session['payment_status']; ?>"><?php echo ucfirst($session['payment_status']); ?></span></td>
                         <td>
                             <?php if ($session['status'] == 'pending' && $user['role'] == 'tutor'): ?>
-                                <form method="POST" action="update_session_status.php" style="display:inline;">
-                                    <input type="hidden" name="session_id" value="<?php echo $session['id']; ?>">
+                                <form method="POST" action="update_booking_status.php" style="display:inline;">
+                                    <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars(generateCsrfToken()); ?>">
+                                    <input type="hidden" name="booking_id" value="<?php echo $session['id']; ?>">
                                     <input type="hidden" name="status" value="approved">
-                                    <button type="submit" class="action-btn approve" onclick="return confirm('Approve this session?')">Approve</button>
+                                    <button type="submit" class="action-btn approve" onclick="return confirm('Approve?')">Approve</button>
                                 </form>
-                                <form method="POST" action="update_session_status.php" style="display:inline;">
-                                    <input type="hidden" name="session_id" value="<?php echo $session['id']; ?>">
+                                <form method="POST" action="update_booking_status.php" style="display:inline;">
+                                    <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars(generateCsrfToken()); ?>">
+                                    <input type="hidden" name="booking_id" value="<?php echo $session['id']; ?>">
                                     <input type="hidden" name="status" value="rejected">
-                                    <button type="submit" class="action-btn reject" onclick="return confirm('Reject this session?')">Reject</button>
+                                    <button type="submit" class="action-btn reject" onclick="return confirm('Reject?')">Reject</button>
                                 </form>
                             <?php elseif ($session['status'] == 'pending' && $user['role'] == 'student'): ?>
-                                <form method="POST" action="update_session_status.php" style="display:inline;">
-                                    <input type="hidden" name="session_id" value="<?php echo $session['id']; ?>">
-                                    <input type="hidden" name="status" value="cancelled">
-                                    <button type="submit" class="action-btn reject" onclick="return confirm('Cancel this session?')">Cancel</button>
+                                <form method="POST" action="cancel_booking.php" style="display:inline;">
+                                    <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars(generateCsrfToken()); ?>">
+                                    <input type="hidden" name="booking_id" value="<?php echo $session['id']; ?>">
+                                    <button type="submit" class="action-btn reject" onclick="return confirm('Cancel?')">Cancel</button>
                                 </form>
                             <?php elseif ($session['status'] == 'approved' && $session['payment_status'] == 'pending' && $user['role'] == 'student'): ?>
-                                <a href="payment.php?session_id=<?php echo $session['id']; ?>" class="action-btn approve">Pay Now</a>
+                                <a href="payment.php?booking_id=<?php echo $session['id']; ?>" class="action-btn approve">Pay Now</a>
                             <?php elseif ($session['status'] == 'completed' && $user['role'] == 'student'): ?>
-                                <button class="action-btn approve" onclick="showRatingModal(<?php echo $session['id']; ?>)">Rate</button>
+                                <a href="rate_session.php?booking_id=<?php echo $session['id']; ?>" class="action-btn approve">Rate</a>
                             <?php endif; ?>
                         </td>
                     </tr>

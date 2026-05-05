@@ -12,7 +12,7 @@ if ($user['role'] != 'admin') {
     exit();
 }
 
-$user_id = $_GET['id'] ?? 0;
+$user_id = sanitizeInt($_GET['id'] ?? 0);
 $conn = getConnection();
 
 $stmt = $conn->prepare("SELECT * FROM users WHERE id = ?");

@@ -10,7 +10,7 @@ if ($user['role'] != 'student') {
     redirect('dashboard.php');
 }
 
-$task_id = $_GET['id'] ?? 0;
+$task_id = sanitizeInt($_GET['id'] ?? 0);
 $conn = getConnection();
 
 // Get assignment details
@@ -34,32 +34,48 @@ $stmt->execute([$task_id, $user['id']]);
 $submission = $stmt->fetch();
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    $submission_text = $_POST['submission_text'] ?? '';
-    
+    if (!verifyCsrfToken($_POST['csrf_token'] ?? '')) {
+        setFlash("Invalid request.", 'danger');
+        redirect("submit_assignment.php?id=$task_id");
+    }
+
+    $submission_text = trim($_POST['submission_text'] ?? '');
+
     // Handle file upload
     $submission_file = null;
-    if (isset($_FILES['submission_file']) && $_FILES['submission_file']['error'] == 0) {
-        $allowed = ['pdf', 'doc', 'docx', 'txt', 'jpg', 'png', 'zip'];
-        $filename = $_FILES['submission_file']['name'];
-        $ext = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
-        
-        if (in_array($ext, $allowed)) {
-            $new_filename = time() . '_' . $user['id'] . '_' . $task_id . '.' . $ext;
-            move_uploaded_file($_FILES['submission_file']['tmp_name'], 'uploads/submissions/' . $new_filename);
-            $submission_file = $new_filename;
+    if (isset($_FILES['submission_file']) && $_FILES['submission_file']['error'] == UPLOAD_ERR_OK) {
+        $allowed     = ['pdf', 'doc', 'docx', 'txt', 'jpg', 'png', 'zip'];
+        $max_size    = 10 * 1024 * 1024; // 10 MB
+        $filename    = $_FILES['submission_file']['name'];
+        $ext         = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
+        $file_size   = $_FILES['submission_file']['size'];
+
+        if (!in_array($ext, $allowed)) {
+            setFlash("Invalid file type. Allowed: PDF, DOC, DOCX, TXT, JPG, PNG, ZIP.", 'danger');
+            redirect("submit_assignment.php?id=$task_id");
         }
+        if ($file_size > $max_size) {
+            setFlash("File too large. Maximum size is 10MB.", 'danger');
+            redirect("submit_assignment.php?id=$task_id");
+        }
+
+        $submissions_dir = UPLOAD_PATH . 'submissions/';
+        if (!file_exists($submissions_dir)) {
+            mkdir($submissions_dir, 0755, true);
+        }
+        $new_filename = time() . '_' . $user['id'] . '_' . $task_id . '.' . $ext;
+        move_uploaded_file($_FILES['submission_file']['tmp_name'], $submissions_dir . $new_filename);
+        $submission_file = $new_filename;
     }
-    
+
     if ($submission) {
-        // Update existing submission
         $stmt = $conn->prepare("UPDATE task_submissions SET submission_text = ?, submission_file = ?, status = 'submitted', submitted_at = NOW() WHERE task_id = ? AND student_id = ?");
         $stmt->execute([$submission_text, $submission_file, $task_id, $user['id']]);
     } else {
-        // Create new submission
         $stmt = $conn->prepare("INSERT INTO task_submissions (task_id, student_id, submission_text, submission_file, status, submitted_at) VALUES (?, ?, ?, ?, 'submitted', NOW())");
         $stmt->execute([$task_id, $user['id'], $submission_text, $submission_file]);
     }
-    
+
     setFlash("Assignment submitted successfully!", 'success');
     redirect('student_dashboard.php');
 }
@@ -67,46 +83,17 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
 <?php include 'header.php'; ?>
 
-<div class="dashboard-container">
-    <div class="sidebar">
-        <div class="sidebar-header">
-            <img src="images/scclogo.png" alt="SCC Logo">
-            <h3>Student Menu</h3>
-        </div>
-        <nav class="sidebar-nav">
-            <a href="student_dashboard.php" class="sidebar-link"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
-            <a href="book_session.php" class="sidebar-link"><i class="fas fa-calendar-plus"></i> Book a Tutor</a>
-            <a href="my_bookings.php" class="sidebar-link"><i class="fas fa-list-alt"></i> My Bookings</a>
-            <a href="my_assignments.php" class="sidebar-link active"><i class="fas fa-tasks"></i> My Assignments</a>
-            <a href="profile.php" class="sidebar-link"><i class="fas fa-user-circle"></i> Profile</a>
-            <a href="logout.php" class="sidebar-link logout"><i class="fas fa-sign-out-alt"></i> Logout</a>
-        </nav>
-        <div class="sidebar-footer">
-            <div class="user-info">
-                <div class="user-avatar">
-                    <?php if ($user['profile_pic']): ?>
-                        <img src="uploads/<?php echo $user['profile_pic']; ?>">
-                    <?php else: ?>
-                        <?php echo substr($user['full_name'], 0, 1); ?>
-                    <?php endif; ?>
-                </div>
-                <div>
-                    <div class="user-name"><?php echo htmlspecialchars($user['full_name']); ?></div>
-                    <div class="user-role">Student</div>
-                </div>
-            </div>
+<div class="page-wrapper">
+    <?php include 'sidebar.php'; ?>
+
+    <div class="page-hero">
+        <div class="page-hero-content">
+            <h1>Submit Assignment</h1>
+            <p>Upload your work for review</p>
         </div>
     </div>
-    
-    <div class="main-content">
-        <button class="menu-toggle" onclick="document.querySelector('.sidebar').classList.toggle('active')">
-            <i class="fas fa-bars"></i>
-        </button>
-        
-        <div class="welcome-banner">
-            <h1><i class="fas fa-upload"></i> Submit Assignment</h1>
-            <p><?php echo htmlspecialchars($assignment['title']); ?></p>
-        </div>
+
+    <div class="page-inner">
         
         <div class="assignment-details">
             <div class="info-row">
@@ -138,6 +125,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         
         <div class="content-card">
             <form method="POST" action="" enctype="multipart/form-data">
+                <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars(generateCsrfToken()); ?>">
                 <div class="form-group">
                     <label>Your Answer / Submission</label>
                     <textarea name="submission_text" rows="8" placeholder="Write your answer here..."><?php echo htmlspecialchars($submission['submission_text'] ?? ''); ?></textarea>

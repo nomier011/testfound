@@ -14,12 +14,12 @@ if ($user['role'] != 'student') {
 $conn = getConnection();
 
 $stmt = $conn->prepare("
-    SELECT s.*, sub.name as subject_name, u.full_name as tutor_name, u.profile_pic as tutor_pic
-    FROM sessions s
-    JOIN subjects sub ON s.subject_id = sub.id
-    JOIN users u ON s.tutor_id = u.id
-    WHERE s.student_id = ?
-    ORDER BY s.session_date DESC
+    SELECT b.*, s.name as subject_name, u.full_name as tutor_name, u.profile_pic as tutor_pic
+    FROM bookings b
+    JOIN subjects s ON b.subject_id = s.id
+    JOIN users u ON b.tutor_id = u.id
+    WHERE b.student_id = ?
+    ORDER BY b.created_at DESC
 ");
 $stmt->execute([$user['id']]);
 $sessions = $stmt->fetchAll();
@@ -27,49 +27,17 @@ $sessions = $stmt->fetchAll();
 
 <?php include 'header.php'; ?>
 
-<div class="main-content">
-    <button class="menu-toggle" onclick="document.querySelector('.sidebar').classList.toggle('active')">
-        <i class="fas fa-bars"></i>
-    </button>
-    
-    <div class="sidebar">
-        <div class="sidebar-header">
-            <img src="images/scclogo.png" alt="SCC Logo">
-            <h3>Student Menu</h3>
-        </div>
-        
-        <nav class="sidebar-nav">
-            <a href="student_dashboard.php" class="sidebar-link"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
-            <a href="book_session.php" class="sidebar-link"><i class="fas fa-calendar-plus"></i> Create Booking</a>
-            <a href="view_instructors.php" class="sidebar-link"><i class="fas fa-chalkboard-teacher"></i> View Instructors</a>
-            <a href="view_bookings.php" class="sidebar-link active"><i class="fas fa-list-alt"></i> View Bookings</a>
-            <a href="view_grades.php" class="sidebar-link"><i class="fas fa-chart-line"></i> View Grades</a>
-            <a href="view_payments.php" class="sidebar-link"><i class="fas fa-credit-card"></i> Payment Due</a>
-            <a href="profile.php" class="sidebar-link"><i class="fas fa-user-circle"></i> Profile</a>
-            <a href="logout.php" class="sidebar-link"><i class="fas fa-sign-out-alt"></i> Logout</a>
-        </nav>
-        
-        <div class="sidebar-footer">
-            <div class="user-info">
-                <div class="user-avatar">
-                    <?php if ($user['profile_pic']): ?>
-                        <img src="uploads/<?php echo $user['profile_pic']; ?>" alt="Profile">
-                    <?php else: ?>
-                        <?php echo substr($user['full_name'], 0, 1); ?>
-                    <?php endif; ?>
-                </div>
-                <div class="user-details">
-                    <div class="user-name"><?php echo $user['full_name']; ?></div>
-                    <div class="user-role">Student • Year <?php echo $user['year_level']; ?></div>
-                </div>
-            </div>
+<div class="page-wrapper">
+    <?php include 'sidebar.php'; ?>
+
+    <div class="page-hero">
+        <div class="page-hero-content">
+            <h1>My Bookings</h1>
+            <p>View all your tutoring sessions</p>
         </div>
     </div>
-    
-    <div class="welcome-banner">
-        <h1><i class="fas fa-list-alt"></i> My Bookings</h1>
-        <p>View and manage all your tutoring sessions</p>
-    </div>
+
+    <div class="page-inner">
     
     <div class="filter-tabs">
         <button class="tab-btn active" onclick="filterBookings('all')">All</button>
@@ -87,7 +55,7 @@ $sessions = $stmt->fetchAll();
                         <span class="status-badge status-<?php echo $session['status']; ?>"><?php echo ucfirst($session['status']); ?></span>
                         <span class="status-badge status-<?php echo $session['payment_status']; ?>" style="margin-left: 10px;"><?php echo ucfirst($session['payment_status']); ?></span>
                     </div>
-                    <div class="booking-date">📅 <?php echo date('F d, Y', strtotime($session['session_date'])); ?></div>
+                    <div class="booking-date">📅 <?php echo date('F d, Y', strtotime($session['booking_date'])); ?></div>
                 </div>
                 
                 <div style="display: flex; justify-content: space-between; gap: 20px;">
@@ -112,27 +80,33 @@ $sessions = $stmt->fetchAll();
                     
                     <div style="display: flex; flex-direction: column; gap: 10px; min-width: 120px;">
                         <?php if ($session['status'] == 'pending'): ?>
-                            <form method="POST" action="update_session_status.php">
-                                <input type="hidden" name="session_id" value="<?php echo $session['id']; ?>">
-                                <input type="hidden" name="status" value="cancelled">
+                            <form method="POST" action="cancel_booking.php">
+                                <input type="hidden" name="booking_id" value="<?php echo $session['id']; ?>">
                                 <button type="submit" class="action-btn reject" style="width: 100%;" onclick="return confirm('Cancel this booking?')">❌ Cancel</button>
                             </form>
                         <?php endif; ?>
                         
                         <?php if ($session['status'] == 'approved' && $session['payment_status'] != 'paid'): ?>
-                            <a href="payment.php?session_id=<?php echo $session['id']; ?>" class="action-btn approve" style="text-align: center;">💰 Pay Now</a>
+                            <a href="payment.php?booking_id=<?php echo $session['id']; ?>" class="action-btn approve" style="text-align: center;">💰 Pay Now</a>
+                        <?php endif; ?>
+
+                        <?php if ($session['status'] == 'approved' && $session['payment_status'] == 'paid'): ?>
+                            <a href="session_call.php?booking_id=<?php echo $session['id']; ?>" target="_blank"
+                               style="display:flex;align-items:center;justify-content:center;gap:6px;padding:10px 14px;background:#dc2626;color:#fff;border-radius:8px;text-decoration:none;font-weight:700;font-size:.82rem;width:100%;">
+                                <i class="fas fa-video"></i> Join Call
+                            </a>
                         <?php endif; ?>
                         
                         <?php if ($session['status'] == 'completed'): ?>
                             <?php
-                            $stmt = $conn->prepare("SELECT rating FROM session_history WHERE session_id = ?");
+                            $stmt = $conn->prepare("SELECT id FROM ratings WHERE booking_id = ?");
                             $stmt->execute([$session['id']]);
                             $history = $stmt->fetch();
                             ?>
-                            <?php if (!$history || !$history['rating']): ?>
-                                <button class="action-btn approve" onclick="showRatingModal(<?php echo $session['id']; ?>)" style="text-align: center;">⭐ Rate</button>
+                            <?php if (!$history): ?>
+                                <a href="rate_session.php?booking_id=<?php echo $session['id']; ?>" class="action-btn approve" style="text-align: center;">⭐ Rate</a>
                             <?php else: ?>
-                                <div style="text-align: center; padding: 8px; background: #f5f5f5; border-radius: 5px;"><?php echo str_repeat('⭐', $history['rating']); ?></div>
+                                <div style="text-align: center; padding: 8px; background: #f5f5f5; border-radius: 5px;">✓ Rated</div>
                             <?php endif; ?>
                         <?php endif; ?>
                     </div>
@@ -142,6 +116,7 @@ $sessions = $stmt->fetchAll();
     <?php else: ?>
         <div class="no-data">No bookings found. <a href="book_session.php">Book your first session!</a></div>
     <?php endif; ?>
+    </div>
 </div>
 
 <!-- Rating Modal -->

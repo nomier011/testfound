@@ -18,83 +18,121 @@ $error = null;
 $subjects = $conn->query("SELECT * FROM subjects ORDER BY name")->fetchAll();
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    $tutor_id = $_POST['tutor_id'] ?? 0;
-    $subject_id = $_POST['subject_id'] ?? 0;
-    $booking_date = $_POST['booking_date'] ?? '';
-    $start_time = $_POST['start_time'] ?? '';
-    $duration = $_POST['duration'] ?? 1;
-    $notes = $_POST['notes'] ?? '';
-    
-    // Get tutor details
-    $stmt = $conn->prepare("SELECT * FROM users WHERE id = ?");
-    $stmt->execute([$tutor_id]);
-    $tutor = $stmt->fetch();
-    
-    if (!$tutor) {
-        $error = "Tutor not found";
+    // CSRF check
+    if (!verifyCsrfToken($_POST['csrf_token'] ?? '')) {
+        $error = "Invalid request. Please try again.";
     } else {
-        $end_time = date('H:i:s', strtotime($start_time) + ($duration * 3600));
-        $amount = $tutor['hourly_rate'] * $duration;
-        
-        // Create booking with status 'pending' (waiting for tutor approval)
-        $stmt = $conn->prepare("INSERT INTO bookings (student_id, tutor_id, subject_id, booking_date, start_time, end_time, duration, amount, notes, status, payment_status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', 'pending')");
-        $stmt->execute([$user['id'], $tutor_id, $subject_id, $booking_date, $start_time, $end_time, $duration, $amount, $notes]);
-        $booking_id = $conn->lastInsertId();
-        
-        // Create notification for tutor
-        $stmt = $conn->prepare("INSERT INTO notifications (user_id, message, type) VALUES (?, ?, ?)");
-        $stmt->execute([$tutor_id, "New booking request from {$user['full_name']} for {$booking_date}", 'booking_request']);
-        
-        setFlash("Booking request sent! Please wait for tutor approval.", 'success');
-        redirect('my_bookings.php');
+        $tutor_id     = sanitizeInt($_POST['tutor_id'] ?? 0);
+        $subject_id   = sanitizeInt($_POST['subject_id'] ?? 0);
+        $booking_date = trim($_POST['booking_date'] ?? '');
+        $start_time   = trim($_POST['start_time'] ?? '');
+        $duration     = (float)$_POST['duration'];
+        $notes        = trim($_POST['notes'] ?? '');
+
+        // 1. Tutor and subject must be selected
+        if (!$tutor_id || !$subject_id) {
+            $error = "Please select a tutor and subject.";
+        }
+
+        // 2. Duration must be one of the allowed values
+        $allowed_durations = [0.5, 1.0, 1.5, 2.0, 2.5, 3.0];
+        if (!$error && !in_array(round($duration, 1), $allowed_durations)) {
+            $error = "Invalid session duration selected.";
+        }
+
+        // 3. Date must be today or future
+        if (!$error) {
+            if (empty($booking_date) || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $booking_date)) {
+                $error = "Please select a valid booking date.";
+            } elseif (strtotime($booking_date) < strtotime(date('Y-m-d'))) {
+                $error = "Booking date cannot be in the past.";
+            }
+        }
+
+        // 4. Time must be between 08:00 and 20:00
+        if (!$error) {
+            if (empty($start_time) || !preg_match('/^\d{2}:\d{2}$/', $start_time)) {
+                $error = "Please select a valid start time.";
+            } else {
+                [$h, $m] = explode(':', $start_time);
+                $h = (int)$h; $m = (int)$m;
+                if ($h < 8 || $h > 20 || ($h == 20 && $m > 0)) {
+                    $error = "Start time must be between 08:00 and 20:00.";
+                }
+            }
+        }
+
+        if (!$error) {
+            // 5. Verify tutor exists and is available
+            $stmt = $conn->prepare("SELECT id, full_name, hourly_rate FROM users WHERE id = ? AND role = 'tutor' AND status = 'approved' AND is_available = 1");
+            $stmt->execute([$tutor_id]);
+            $tutor = $stmt->fetch();
+
+            if (!$tutor) {
+                $error = "Tutor not found or currently unavailable.";
+            } else {
+                $start_ts = strtotime($booking_date . ' ' . $start_time);
+                $end_ts   = $start_ts + (int)($duration * 3600);
+                $end_time = date('H:i:s', $end_ts);
+                $amount   = round($tutor['hourly_rate'] * $duration, 2);
+
+                // 6. Check for conflicting booking (same tutor, same date, overlapping time)
+                $stmt = $conn->prepare("
+                    SELECT id FROM bookings
+                    WHERE tutor_id = ?
+                      AND booking_date = ?
+                      AND status NOT IN ('cancelled','rejected')
+                      AND start_time < ? AND end_time > ?
+                ");
+                $stmt->execute([$tutor_id, $booking_date, $end_time, $start_time]);
+                if ($stmt->fetch()) {
+                    $error = "This tutor already has a session at that time. Please choose a different time.";
+                }
+            }
+        }
+
+        if (!$error) {
+            try {
+                $conn->beginTransaction();
+
+                $stmt = $conn->prepare("INSERT INTO bookings (student_id, tutor_id, subject_id, booking_date, start_time, end_time, duration, amount, notes, status, payment_status, booking_number) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', 'pending', ?)");
+                $booking_number = 'BK-' . strtoupper(substr(uniqid(), -6)) . '-' . date('Ymd');
+                $stmt->execute([$user['id'], $tutor_id, $subject_id, $booking_date, $start_time, $end_time, $duration, $amount, $notes, $booking_number]);
+                $booking_id = $conn->lastInsertId();
+
+                $stmt = $conn->prepare("INSERT INTO notifications (user_id, message, type) VALUES (?, ?, ?)");
+                $stmt->execute([$tutor_id, "New booking request from " . htmlspecialchars($user['full_name']) . " for " . htmlspecialchars($booking_date), 'booking_request']);
+
+                $conn->commit();
+                setFlash("Booking request sent! Please wait for tutor approval.", 'success');
+                redirect('my_bookings.php');
+            } catch (PDOException $e) {
+                $conn->rollBack();
+                error_log("Booking error: " . $e->getMessage());
+                $error = "Failed to create booking. Please try again.";
+            }
+        }
     }
 }
 ?>
 
 <?php include 'header.php'; ?>
 
-<div class="dashboard-container">
-    <div class="sidebar">
-        <div class="sidebar-header">
-            <img src="images/scclogo.png" alt="SCC Logo">
-            <h3>Student Menu</h3>
-        </div>
-        <nav class="sidebar-nav">
-            <a href="student_dashboard.php" class="sidebar-link"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
-            <a href="book_session.php" class="sidebar-link active"><i class="fas fa-calendar-plus"></i> Book a Tutor</a>
-            <a href="my_bookings.php" class="sidebar-link"><i class="fas fa-list-alt"></i> My Bookings</a>
-            <a href="profile.php" class="sidebar-link"><i class="fas fa-user-circle"></i> Profile</a>
-            <a href="logout.php" class="sidebar-link logout"><i class="fas fa-sign-out-alt"></i> Logout</a>
-        </nav>
-        <div class="sidebar-footer">
-            <div class="user-info">
-                <div class="user-avatar">
-                    <?php if ($user['profile_pic']): ?>
-                        <img src="uploads/<?php echo $user['profile_pic']; ?>">
-                    <?php else: ?>
-                        <?php echo substr($user['full_name'], 0, 1); ?>
-                    <?php endif; ?>
-                </div>
-                <div>
-                    <div class="user-name"><?php echo htmlspecialchars($user['full_name']); ?></div>
-                    <div class="user-role">Student</div>
-                </div>
-            </div>
+<div class="page-wrapper">
+    <?php include 'sidebar.php'; ?>
+
+    <div class="page-hero">
+        <div class="page-hero-content">
+            <h1>Book a Tutor</h1>
+            <p>Select a subject and schedule your session</p>
         </div>
     </div>
-    
-    <div class="main-content">
-        <button class="menu-toggle" onclick="document.querySelector('.sidebar').classList.toggle('active')">
-            <i class="fas fa-bars"></i>
-        </button>
-        
-        <div class="welcome-banner">
-            <h1><i class="fas fa-calendar-plus"></i> Book a Tutor</h1>
-            <p>Select a subject, then choose your preferred tutor</p>
-        </div>
-        
+
+    <div class="page-inner">
         <?php if ($error): ?>
-            <div class="error-message"><?php echo $error; ?></div>
+            <div style="background:#fef2f2;color:#dc2626;border:1px solid #fecaca;border-left:4px solid #dc2626;border-radius:10px;padding:14px 18px;margin-bottom:20px;display:flex;align-items:center;gap:10px;font-weight:500;">
+                <i class="fas fa-exclamation-circle"></i> <?php echo htmlspecialchars($error); ?>
+            </div>
         <?php endif; ?>
         
         <div class="booking-steps">
@@ -148,13 +186,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 <div id="selectedTutorInfo" class="selected-tutor-info"></div>
                 
                 <form method="POST" action="" id="bookingForm">
+                    <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars(generateCsrfToken()); ?>">
                     <input type="hidden" name="tutor_id" id="selectedTutorId">
                     <input type="hidden" name="subject_id" id="selectedSubjectId">
                     
                     <div class="form-row">
                         <div class="form-group">
                             <label>Booking Date</label>
-                            <input type="date" name="booking_date" id="booking_date" min="<?php echo date('Y-m-d', strtotime('+1 day')); ?>" required>
+                            <input type="date" name="booking_date" id="booking_date" min="<?php echo date('Y-m-d'); ?>" required>
                         </div>
                         <div class="form-group">
                             <label>Start Time</label>
@@ -165,6 +204,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     <div class="form-group">
                         <label>Duration (hours)</label>
                         <select name="duration" id="duration">
+                            <option value="0.5">30 minutes</option>
                             <option value="1">1 hour</option>
                             <option value="1.5">1.5 hours</option>
                             <option value="2">2 hours</option>
@@ -246,7 +286,7 @@ function loadTutors(subjectId) {
                         ${tutor.profile_pic ? `<img src="uploads/${tutor.profile_pic}">` : `<span>${tutor.full_name.charAt(0)}</span>`}
                     </div>
                     <div class="tutor-info">
-                        <h4>${tutor.full_name}</h4>
+                        <h4>${tutor.full_name} <a href="view_profile.php?id=${tutor.id}" target="_blank" style="font-size:.7rem;color:#dc2626;font-weight:600;margin-left:6px;text-decoration:none;">View Profile</a></h4>
                         <div class="tutor-rating">
                             ${starsHtml}
                             <span>(${tutor.total_ratings || 0} reviews)</span>
@@ -325,6 +365,26 @@ function goToStep(step) {
 }
 
 document.getElementById('booking_date').min = new Date().toISOString().split('T')[0];
+
+// If there was a POST error, restore the form state
+<?php if ($error && $_SERVER['REQUEST_METHOD'] === 'POST'): ?>
+(function() {
+    const tutorId   = '<?php echo sanitizeInt($_POST['tutor_id'] ?? 0); ?>';
+    const subjectId = '<?php echo sanitizeInt($_POST['subject_id'] ?? 0); ?>';
+    if (tutorId && subjectId) {
+        document.getElementById('selectedTutorId').value   = tutorId;
+        document.getElementById('selectedSubjectId').value = subjectId;
+        goToStep(3);
+        // Restore date and time
+        const bd = '<?php echo htmlspecialchars($_POST['booking_date'] ?? ''); ?>';
+        const st = '<?php echo htmlspecialchars($_POST['start_time'] ?? ''); ?>';
+        if (bd) document.getElementById('booking_date').value = bd;
+        if (st) document.getElementById('start_time').value   = st;
+        const dur = '<?php echo htmlspecialchars($_POST['duration'] ?? '1'); ?>';
+        if (dur) document.getElementById('duration').value = dur;
+    }
+})();
+<?php endif; ?>
 </script>
 
 <style>
@@ -545,7 +605,6 @@ document.getElementById('booking_date').min = new Date().toISOString().split('T'
     .navigation-buttons {
         flex-direction: column;
     }
-}
-</style>
+}</style>
 
 <?php include 'footer.php'; ?>

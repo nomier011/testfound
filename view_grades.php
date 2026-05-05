@@ -54,49 +54,17 @@ foreach ($grades as $grade) {
 
 <?php include 'header.php'; ?>
 
-<div class="main-content">
-    <button class="menu-toggle" onclick="document.querySelector('.sidebar').classList.toggle('active')">
-        <i class="fas fa-bars"></i>
-    </button>
-    
-    <div class="sidebar">
-        <div class="sidebar-header">
-            <img src="images/scclogo.png" alt="SCC Logo">
-            <h3>Student Menu</h3>
-        </div>
-        
-        <nav class="sidebar-nav">
-            <a href="student_dashboard.php" class="sidebar-link"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
-            <a href="book_session.php" class="sidebar-link"><i class="fas fa-calendar-plus"></i> Create Booking</a>
-            <a href="view_instructors.php" class="sidebar-link"><i class="fas fa-chalkboard-teacher"></i> View Instructors</a>
-            <a href="view_bookings.php" class="sidebar-link"><i class="fas fa-list-alt"></i> View Bookings</a>
-            <a href="view_grades.php" class="sidebar-link active"><i class="fas fa-chart-line"></i> View Grades</a>
-            <a href="view_payments.php" class="sidebar-link"><i class="fas fa-credit-card"></i> Payment Due</a>
-            <a href="profile.php" class="sidebar-link"><i class="fas fa-user-circle"></i> Profile</a>
-            <a href="logout.php" class="sidebar-link"><i class="fas fa-sign-out-alt"></i> Logout</a>
-        </nav>
-        
-        <div class="sidebar-footer">
-            <div class="user-info">
-                <div class="user-avatar">
-                    <?php if ($user['profile_pic']): ?>
-                        <img src="uploads/<?php echo $user['profile_pic']; ?>" alt="Profile">
-                    <?php else: ?>
-                        <?php echo substr($user['full_name'], 0, 1); ?>
-                    <?php endif; ?>
-                </div>
-                <div class="user-details">
-                    <div class="user-name"><?php echo $user['full_name']; ?></div>
-                    <div class="user-role">Student • Year <?php echo $user['year_level']; ?></div>
-                </div>
-            </div>
+<div class="page-wrapper">
+    <?php include 'sidebar.php'; ?>
+
+    <div class="page-hero">
+        <div class="page-hero-content">
+            <h1>My Grades</h1>
+            <p>Track your academic performance</p>
         </div>
     </div>
-    
-    <div class="welcome-banner">
-        <h1><i class="fas fa-chart-line"></i> My Grades</h1>
-        <p>Track your academic performance</p>
-    </div>
+
+    <div class="page-inner">
     
     <div class="gpa-overview" style="display: flex; align-items: center; gap: 30px; background: rgba(255,255,255,0.95); border-radius: 20px; padding: 30px; margin-bottom: 30px;">
         <div style="text-align: center;">
@@ -147,6 +115,7 @@ foreach ($grades as $grade) {
     <?php if (!$grades): ?>
         <div class="no-data">No grades available yet.</div>
     <?php endif; ?>
+    </div>
 </div>
 
 <?php include 'footer.php'; ?>

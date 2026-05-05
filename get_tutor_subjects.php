@@ -6,7 +6,7 @@ if (!isLoggedIn()) {
     exit();
 }
 
-$tutor_id = $_GET['tutor_id'] ?? 0;
+$tutor_id = sanitizeInt($_GET['tutor_id'] ?? 0);
 $conn = getConnection();
 
 $stmt = $conn->prepare("

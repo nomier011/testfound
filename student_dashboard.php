@@ -2,705 +2,437 @@
 require_once 'config.php';
 $page_title = 'Student Dashboard';
 
-if (!isLoggedIn()) {
-    redirect('login.php');
-}
-
-$user = getUserById($_SESSION['user_id']);
-if ($user['role'] != 'student') {
-    redirect('dashboard.php');
-}
+requireLogin();
+$user = getCurrentUser();
+requireRole('student');
 
 $conn = getConnection();
 
 // Get statistics
-$stmt = $conn->prepare("SELECT COUNT(*) as count FROM bookings WHERE student_id = ? AND status = 'pending'");
+$stmt = $conn->prepare("
+    SELECT 
+        COUNT(CASE WHEN status = 'pending' THEN 1 END) as pending_bookings,
+        COUNT(CASE WHEN status = 'approved' THEN 1 END) as approved_bookings,
+        COUNT(CASE WHEN status = 'completed' THEN 1 END) as completed_bookings,
+        COUNT(CASE WHEN payment_status = 'pending' AND status = 'approved' THEN 1 END) as pending_payments
+    FROM bookings WHERE student_id = ?
+");
 $stmt->execute([$user['id']]);
-$pending_count = $stmt->fetch()['count'];
-
-$stmt = $conn->prepare("SELECT COUNT(*) as count FROM bookings WHERE student_id = ? AND status = 'approved'");
-$stmt->execute([$user['id']]);
-$approved_count = $stmt->fetch()['count'];
-
-$stmt = $conn->prepare("SELECT COUNT(*) as count FROM bookings WHERE student_id = ? AND status = 'completed'");
-$stmt->execute([$user['id']]);
-$completed_count = $stmt->fetch()['count'];
-
-$stmt = $conn->prepare("SELECT COUNT(*) as count FROM bookings WHERE student_id = ? AND payment_status = 'pending'");
-$stmt->execute([$user['id']]);
-$pending_payment = $stmt->fetch()['count'];
+$stats = $stmt->fetch();
 
 // Get upcoming sessions
 $stmt = $conn->prepare("
-    SELECT b.*, s.name as subject_name, u.full_name as tutor_name, u.profile_pic as tutor_pic
+    SELECT b.*, s.name as subject_name, u.full_name as tutor_name, u.profile_pic
     FROM bookings b
     JOIN subjects s ON b.subject_id = s.id
     JOIN users u ON b.tutor_id = u.id
-    WHERE b.student_id = ? AND b.status = 'approved'
-    ORDER BY b.booking_date ASC LIMIT 5
+    WHERE b.student_id = ? AND b.status = 'approved' AND b.booking_date >= CURDATE()
+    ORDER BY b.booking_date ASC, b.start_time ASC
+    LIMIT 5
 ");
 $stmt->execute([$user['id']]);
 $upcoming_sessions = $stmt->fetchAll();
 
-// Get pending assignments count
+// Get pending assignments
 $stmt = $conn->prepare("
     SELECT COUNT(*) as count FROM tasks t
-    WHERE t.status = 'active' AND NOT EXISTS (
-        SELECT 1 FROM task_submissions ts 
-        WHERE ts.task_id = t.id AND ts.student_id = ?
-    )
+    WHERE t.status = 'active' 
+    AND NOT EXISTS (SELECT 1 FROM task_submissions ts WHERE ts.task_id = t.id AND ts.student_id = ?)
 ");
 $stmt->execute([$user['id']]);
 $pending_assignments = $stmt->fetch()['count'];
 
-// Get recent assignments
+// Get module progress
 $stmt = $conn->prepare("
-    SELECT t.*, s.name as subject_name,
-           (SELECT status FROM task_submissions WHERE task_id = t.id AND student_id = ?) as submission_status
-    FROM tasks t
-    JOIN subjects s ON t.subject_id = s.id
-    WHERE t.status = 'active'
-    ORDER BY t.due_date ASC LIMIT 3
+    SELECT COUNT(DISTINCT m.id) as total, COUNT(CASE WHEN mp.status = 'completed' THEN 1 END) as completed
+    FROM modules m
+    LEFT JOIN module_progress mp ON mp.module_id = m.id AND mp.user_id = ?
+    WHERE m.status = 'published'
 ");
 $stmt->execute([$user['id']]);
-$recent_assignments = $stmt->fetchAll();
+$module_progress = $stmt->fetch();
 
-// Get available tutors
+// Get recommended tutors
 $stmt = $conn->prepare("
-    SELECT u.*, 
-           (SELECT AVG(rating) FROM ratings r 
-            JOIN bookings b ON r.booking_id = b.id 
-            WHERE b.tutor_id = u.id) as avg_rating
+    SELECT u.id, u.full_name, u.hourly_rate, u.profile_pic, u.expertise,
+           ROUND(AVG(r.rating), 1) as avg_rating,
+           COUNT(DISTINCT b.id) as session_count
     FROM users u
-    WHERE u.role = 'tutor' AND u.is_available = 1
-    LIMIT 3
+    LEFT JOIN bookings b ON b.tutor_id = u.id AND b.status = 'completed'
+    LEFT JOIN ratings r ON r.booking_id = b.id
+    WHERE u.role = 'tutor' AND u.status = 'approved' AND u.is_available = 1
+    GROUP BY u.id
+    ORDER BY avg_rating DESC, session_count DESC
+    LIMIT 4
 ");
 $stmt->execute();
-$available_tutors = $stmt->fetchAll();
+$recommended_tutors = $stmt->fetchAll();
 ?>
 
 <?php include 'header.php'; ?>
 
-<div class="dashboard-container">
-    <!-- Left Sidebar - All Buttons Here -->
-    <div class="sidebar">
-        <div class="sidebar-header">
-            <img src="images/scclogo.png" alt="SCC Logo">
-            <h3>Student Menu</h3>
-        </div>
-        <nav class="sidebar-nav">
-            <a href="student_dashboard.php" class="sidebar-link active">
-                <i class="fas fa-tachometer-alt"></i> Dashboard
-            </a>
-            <a href="book_session.php" class="sidebar-link">
-                <i class="fas fa-calendar-plus"></i> Book a Tutor
-            </a>
-            <a href="my_bookings.php" class="sidebar-link">
-                <i class="fas fa-list-alt"></i> My Bookings
-                <?php if ($pending_count > 0): ?>
-                    <span class="badge-count"><?php echo $pending_count; ?></span>
-                <?php endif; ?>
-            </a>
-            <a href="my_assignments.php" class="sidebar-link">
-                <i class="fas fa-tasks"></i> My Assignments
-                <?php if ($pending_assignments > 0): ?>
-                    <span class="badge-count"><?php echo $pending_assignments; ?></span>
-                <?php endif; ?>
-            </a>
-            <a href="profile.php" class="sidebar-link">
-                <i class="fas fa-user-circle"></i> Profile
-            </a>
-            <a href="logout.php" class="sidebar-link logout">
-                <i class="fas fa-sign-out-alt"></i> Logout
-            </a>
-        </nav>
-        <div class="sidebar-footer">
-            <div class="user-info">
-                <div class="user-avatar">
-                    <?php if ($user['profile_pic']): ?>
-                        <img src="uploads/<?php echo $user['profile_pic']; ?>">
-                    <?php else: ?>
-                        <?php echo substr($user['full_name'], 0, 1); ?>
-                    <?php endif; ?>
-                </div>
-                <div>
-                    <div class="user-name"><?php echo htmlspecialchars($user['full_name']); ?></div>
-                    <div class="user-role">Student • Year <?php echo $user['year_level']; ?></div>
-                </div>
-            </div>
+<div class="page-wrapper">
+    <?php include 'sidebar.php'; ?>
+
+    <div class="page-hero">
+        <div class="page-hero-content">
+            <h1>Welcome back, <?php echo htmlspecialchars(explode(' ', $user['full_name'])[0]); ?>!</h1>
+            <p>Ready to learn something new today? Here's your learning journey summary.</p>
         </div>
     </div>
-    
-    <!-- Main Content Area -->
-    <div class="main-content">
-        <button class="menu-toggle" onclick="document.querySelector('.sidebar').classList.toggle('active')">
-            <i class="fas fa-bars"></i>
-        </button>
-        
-        <div class="welcome-banner">
-            <h1>Welcome back, <?php echo htmlspecialchars($user['full_name']); ?>! 👋</h1>
-            <p>Ready to learn something new today?</p>
-        </div>
-        
-        <!-- Stats Cards -->
+
+    <div class="page-inner">
+        <!-- Stats Grid -->
         <div class="stats-grid">
-            <div class="stat-card">
+            <div class="stat-card" onclick="location.href='my_bookings.php?filter=pending'">
                 <div class="stat-icon"><i class="fas fa-clock"></i></div>
                 <div>
-                    <div class="stat-number"><?php echo $pending_count; ?></div>
-                    <div>Pending Approval</div>
+                    <div class="stat-number"><?php echo $stats['pending_bookings'] ?? 0; ?></div>
+                    <div class="stat-label">Pending Approval</div>
                 </div>
             </div>
-            <div class="stat-card">
+            <div class="stat-card" onclick="location.href='my_bookings.php?filter=approved'">
                 <div class="stat-icon"><i class="fas fa-check-circle"></i></div>
                 <div>
-                    <div class="stat-number"><?php echo $approved_count; ?></div>
-                    <div>Approved</div>
+                    <div class="stat-number"><?php echo $stats['approved_bookings'] ?? 0; ?></div>
+                    <div class="stat-label">Approved Sessions</div>
                 </div>
             </div>
-            <div class="stat-card">
+            <div class="stat-card" onclick="location.href='my_bookings.php?filter=completed'">
                 <div class="stat-icon"><i class="fas fa-check-double"></i></div>
                 <div>
-                    <div class="stat-number"><?php echo $completed_count; ?></div>
-                    <div>Completed</div>
+                    <div class="stat-number"><?php echo $stats['completed_bookings'] ?? 0; ?></div>
+                    <div class="stat-label">Sessions Completed</div>
                 </div>
             </div>
-            <div class="stat-card">
+            <div class="stat-card" onclick="location.href='view_payments.php'">
                 <div class="stat-icon"><i class="fas fa-credit-card"></i></div>
                 <div>
-                    <div class="stat-number"><?php echo $pending_payment; ?></div>
-                    <div>Pending Payment</div>
+                    <div class="stat-number">₱<?php echo number_format($stats['pending_payments'] * 500, 2); ?></div>
+                    <div class="stat-label">Pending Payment</div>
                 </div>
             </div>
         </div>
         
-        <!-- Pending Assignments Section -->
-        <div class="content-card">
-            <div class="card-header">
-                <h3><i class="fas fa-tasks"></i> Pending Assignments</h3>
-                <a href="my_assignments.php" class="view-all">View All</a>
-            </div>
-            <?php if ($recent_assignments): ?>
-                <?php foreach ($recent_assignments as $assignment): ?>
-                    <div class="assignment-item">
-                        <div class="assignment-info">
-                            <div class="assignment-subject"><?php echo htmlspecialchars($assignment['subject_name']); ?></div>
-                            <div class="assignment-title"><?php echo htmlspecialchars($assignment['title']); ?></div>
-                            <div class="assignment-due">
-                                <i class="fas fa-calendar-alt"></i> 
-                                Due: <?php echo $assignment['due_date'] ? date('M d, Y', strtotime($assignment['due_date'])) : 'No due date'; ?>
+        <div class="content-grid">
+            <!-- Upcoming Sessions -->
+            <div class="content-card">
+                <div class="card-header">
+                    <h3><i class="fas fa-calendar-alt"></i> Upcoming Sessions</h3>
+                    <a href="my_bookings.php" class="view-all">View All →</a>
+                </div>
+                <?php if ($upcoming_sessions): ?>
+                    <div class="sessions-list">
+                        <?php foreach ($upcoming_sessions as $session): ?>
+                            <div class="session-item">
+                                <div class="session-date">
+                                    <span class="day"><?php echo date('d', strtotime($session['booking_date'])); ?></span>
+                                    <span class="month"><?php echo date('M', strtotime($session['booking_date'])); ?></span>
+                                </div>
+                                <div class="session-info">
+                                    <h4><?php echo htmlspecialchars($session['subject_name']); ?></h4>
+                                    <p><i class="fas fa-user"></i> <?php echo htmlspecialchars($session['tutor_name']); ?></p>
+                                    <p><i class="fas fa-clock"></i> <?php echo date('h:i A', strtotime($session['start_time'])); ?> - <?php echo date('h:i A', strtotime($session['end_time'])); ?></p>
+                                </div>
+                                <div class="session-actions">
+                                    <span class="status-badge status-approved">Approved</span>
+                                    <?php if ($session['payment_status'] == 'pending'): ?>
+                                        <a href="payment.php?booking_id=<?php echo $session['id']; ?>" class="btn-sm btn-primary">Pay Now</a>
+                                    <?php endif; ?>
+                                    <?php if ($session['payment_status'] == 'paid'): ?>
+                                    <?php if ($session['meet_link']): ?>
+                                    <a href="<?php echo htmlspecialchars($session['meet_link']); ?>" target="_blank"
+                                       style="background:#dc2626;color:#fff;padding:5px 12px;border-radius:6px;font-size:.72rem;font-weight:700;text-decoration:none;display:inline-flex;align-items:center;gap:5px;margin-top:4px;">
+                                        <i class="fas fa-video"></i> Join Meeting
+                                    </a>
+                                    <?php else: ?>
+                                    <span style="font-size:.7rem;color:#9ca3af;display:block;margin-top:4px;"><i class="fas fa-clock"></i> Waiting for tutor's link</span>
+                                    <?php endif; ?>
+                                    <?php endif; ?>
+                                </div>
                             </div>
-                        </div>
-                        <div class="assignment-status">
-                            <?php if ($assignment['submission_status'] == 'submitted'): ?>
-                                <span class="status-submitted"><i class="fas fa-check-circle"></i> Submitted</span>
-                            <?php elseif ($assignment['submission_status'] == 'graded'): ?>
-                                <span class="status-graded"><i class="fas fa-star"></i> Graded</span>
-                            <?php else: ?>
-                                <a href="submit_assignment.php?id=<?php echo $assignment['id']; ?>" class="btn-submit">Submit</a>
-                            <?php endif; ?>
-                        </div>
+                        <?php endforeach; ?>
                     </div>
-                <?php endforeach; ?>
-            <?php else: ?>
-                <div class="no-data">No pending assignments. Great job!</div>
-            <?php endif; ?>
-        </div>
-        
-        <!-- Upcoming Sessions -->
-        <div class="content-card">
-            <div class="card-header">
-                <h3><i class="fas fa-calendar-alt"></i> Upcoming Sessions</h3>
-                <a href="my_bookings.php" class="view-all">View All</a>
+                <?php else: ?>
+                    <div class="no-data">
+                        <i class="fas fa-calendar-times"></i>
+                        <p>No upcoming sessions. <a href="book_session.php">Book a tutor →</a></p>
+                    </div>
+                <?php endif; ?>
             </div>
-            <?php if ($upcoming_sessions): ?>
-                <?php foreach ($upcoming_sessions as $session): ?>
-                    <div class="session-item">
-                        <div class="session-info">
-                            <strong><?php echo htmlspecialchars($session['subject_name']); ?></strong>
-                            <div>with <?php echo htmlspecialchars($session['tutor_name']); ?></div>
-                            <small><?php echo date('M d, Y', strtotime($session['booking_date'])); ?> at <?php echo date('h:i A', strtotime($session['start_time'])); ?></small>
+            
+            <!-- Learning Progress -->
+            <div class="content-card">
+                <div class="card-header">
+                    <h3><i class="fas fa-chart-line"></i> Learning Progress</h3>
+                    <a href="modules.php" class="view-all">Continue Learning →</a>
+                </div>
+                <div class="progress-stats">
+                    <div class="progress-circle">
+                        <svg viewBox="0 0 100 100">
+                            <circle cx="50" cy="50" r="45" fill="none" stroke="#e5e7eb" stroke-width="8"/>
+                            <circle cx="50" cy="50" r="45" fill="none" stroke="#dc2626" stroke-width="8" 
+                                    stroke-dasharray="<?php echo ($module_progress['completed'] / max(1, $module_progress['total'])) * 283; ?> 283"
+                                    stroke-linecap="round" transform="rotate(-90 50 50)"/>
+                        </svg>
+                        <div class="progress-percent">
+                            <?php echo $module_progress['total'] > 0 ? round(($module_progress['completed'] / $module_progress['total']) * 100) : 0; ?>%
                         </div>
-                        <span class="status-badge status-approved">Approved</span>
                     </div>
-                <?php endforeach; ?>
-            <?php else: ?>
-                <div class="no-data">No upcoming sessions. <a href="book_session.php">Book a tutor!</a></div>
-            <?php endif; ?>
+                    <div class="progress-details">
+                        <div class="progress-item">
+                            <span class="progress-label">Modules Completed</span>
+                            <span class="progress-value"><?php echo $module_progress['completed']; ?> / <?php echo $module_progress['total']; ?></span>
+                        </div>
+                        <div class="progress-item">
+                            <span class="progress-label">Assignments Due</span>
+                            <span class="progress-value"><?php echo $pending_assignments; ?></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
         
         <!-- Recommended Tutors -->
-        <?php if ($available_tutors): ?>
+        <?php if ($recommended_tutors): ?>
         <div class="content-card">
             <div class="card-header">
-                <h3><i class="fas fa-chalkboard-teacher"></i> Recommended Tutors</h3>
-                <a href="book_session.php" class="view-all">View All</a>
+                <h3><i class="fas fa-chalkboard-teacher"></i> Recommended Tutors For You</h3>
+                <a href="book_session.php" class="view-all">View All Tutors →</a>
             </div>
             <div class="tutors-grid">
-                <?php foreach ($available_tutors as $tutor): ?>
+                <?php foreach ($recommended_tutors as $tutor): ?>
                     <div class="tutor-card">
                         <div class="tutor-avatar">
                             <?php if ($tutor['profile_pic']): ?>
-                                <img src="uploads/<?php echo $tutor['profile_pic']; ?>">
+                                <img src="uploads/profiles/<?php echo htmlspecialchars($tutor['profile_pic']); ?>" alt="<?php echo htmlspecialchars($tutor['full_name']); ?>">
                             <?php else: ?>
-                                <?php echo substr($tutor['full_name'], 0, 1); ?>
+                                <?php echo strtoupper(substr($tutor['full_name'], 0, 1)); ?>
                             <?php endif; ?>
                         </div>
-                        <h4><?php echo htmlspecialchars($tutor['full_name']); ?></h4>
-                        <div class="tutor-rate">₱<?php echo number_format($tutor['hourly_rate'], 2); ?>/hr</div>
-                        <?php if ($tutor['avg_rating']): ?>
-                            <div class="tutor-rating">
-                                <?php for ($i = 1; $i <= 5; $i++): ?>
-                                    <?php if ($i <= round($tutor['avg_rating'])): ?>
-                                        <i class="fas fa-star"></i>
-                                    <?php else: ?>
-                                        <i class="far fa-star"></i>
-                                    <?php endif; ?>
-                                <?php endfor; ?>
-                                <span>(<?php echo number_format($tutor['avg_rating'], 1); ?>)</span>
+                        <h3><?php echo htmlspecialchars($tutor['full_name']); ?></h3>
+                        <div class="tutor-expertise"><?php echo htmlspecialchars(substr($tutor['expertise'] ?? 'General Tutor', 0, 50)); ?></div>
+                        <div class="tutor-stats">
+                            <div class="stat">
+                                <i class="fas fa-star"></i>
+                                <span><?php echo $tutor['avg_rating'] ? number_format($tutor['avg_rating'], 1) : 'New'; ?></span>
                             </div>
-                        <?php endif; ?>
-                        <a href="book_session.php?tutor=<?php echo $tutor['id']; ?>" class="book-btn">Book Now</a>
+                            <div class="stat">
+                                <i class="fas fa-peso-sign"></i>
+                                <span>₱<?php echo number_format($tutor['hourly_rate'], 2); ?>/hr</span>
+                            </div>
+                            <div class="stat">
+                                <i class="fas fa-users"></i>
+                                <span><?php echo $tutor['session_count']; ?> sessions</span>
+                            </div>
+                        </div>
+                        <a href="book_session.php?tutor=<?php echo $tutor['id']; ?>" class="btn-primary btn-sm">Book Session →</a>
+                        <a href="view_profile.php?id=<?php echo $tutor['id']; ?>" style="display:block;text-align:center;font-size:.72rem;color:#dc2626;margin-top:6px;text-decoration:none;">View Profile</a>
                     </div>
                 <?php endforeach; ?>
             </div>
         </div>
         <?php endif; ?>
-    </div>
-</div>
+    </div><!-- /page-inner -->
+</div><!-- /page-wrapper -->
 
 <style>
-/* Sidebar */
-.sidebar {
-    width: 280px;
-    background: rgba(0, 0, 0, 0.85);
-    backdrop-filter: blur(12px);
-    color: white;
-    position: fixed;
-    left: 0;
-    top: 0;
-    height: 100%;
-    overflow-y: auto;
-    z-index: 100;
-    transition: all 0.3s;
-    border-right: 1px solid rgba(255,255,255,0.1);
-}
-
-.sidebar-header {
-    padding: 25px;
-    text-align: center;
-    border-bottom: 1px solid rgba(255,255,255,0.1);
-}
-
-.sidebar-header img {
-    max-width: 120px;
-    margin-bottom: 10px;
-}
-
-.sidebar-header h3 {
-    font-size: 1.2rem;
-    color: white;
-}
-
-.sidebar-nav {
-    padding: 20px 0;
-}
-
-.sidebar-link {
+.welcome-banner {
     display: flex;
+    justify-content: space-between;
     align-items: center;
-    padding: 12px 25px;
-    color: white;
-    text-decoration: none;
-    transition: all 0.3s;
-    position: relative;
+    flex-wrap: wrap;
+    gap: 16px;
 }
-
-.sidebar-link:hover, .sidebar-link.active {
-    background: rgba(139,0,0,0.8);
-}
-
-.sidebar-link i {
-    width: 25px;
-    margin-right: 12px;
-    font-size: 1.2rem;
-}
-
-.badge-count {
-    background: var(--primary-red);
-    color: white;
-    border-radius: 50%;
-    padding: 2px 8px;
-    font-size: 0.7rem;
-    margin-left: auto;
-}
-
-.sidebar-link.logout {
-    margin-top: 20px;
-    border-top: 1px solid rgba(255,255,255,0.1);
-    padding-top: 20px;
-}
-
-.sidebar-link.logout:hover {
-    background: var(--danger-red);
-}
-
-.sidebar-footer {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    padding: 20px 25px;
-    border-top: 1px solid rgba(255,255,255,0.1);
-}
-
-.user-info {
+.welcome-stats {
     display: flex;
-    align-items: center;
     gap: 12px;
 }
-
-.user-avatar {
-    width: 45px;
-    height: 45px;
-    background: linear-gradient(135deg, var(--primary-red), var(--primary-blue));
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: bold;
-    border: 2px solid var(--primary-gold);
-    overflow: hidden;
-}
-
-.user-avatar img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-}
-
-.user-name {
-    font-weight: 600;
-    font-size: 0.95rem;
-    color: white;
-}
-
-.user-role {
-    font-size: 0.8rem;
-    opacity: 0.8;
-    color: rgba(255,255,255,0.8);
-}
-
-/* Main Content */
-.main-content {
-    margin-left: 280px;
-    padding: 20px;
-    width: 100%;
-    position: relative;
-    z-index: 10;
-}
-
-.menu-toggle {
-    display: none;
-    position: fixed;
-    top: 20px;
-    left: 20px;
-    z-index: 101;
-    background: var(--primary-red);
-    color: white;
-    border: none;
-    padding: 10px;
-    border-radius: 8px;
-    cursor: pointer;
-}
-
-.welcome-banner {
-    background: rgba(255,255,255,0.88);
-    backdrop-filter: blur(10px);
-    border-radius: 20px;
-    padding: 25px 30px;
-    margin-bottom: 25px;
-    border: 1px solid rgba(255,255,255,0.3);
-}
-
-.welcome-banner h1 {
-    color: var(--primary-red);
-    margin-bottom: 5px;
-}
-
-.stats-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 20px;
-    margin-bottom: 30px;
-}
-
-.stat-card {
-    background: rgba(255,255,255,0.88);
-    backdrop-filter: blur(10px);
-    border-radius: 15px;
-    padding: 20px;
-    display: flex;
-    align-items: center;
-    gap: 15px;
-    border: 1px solid rgba(255,255,255,0.3);
-}
-
-.stat-icon {
-    font-size: 2rem;
-    width: 50px;
-    height: 50px;
-    background: rgba(139,0,0,0.1);
-    border-radius: 12px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.stat-number {
-    font-size: 1.8rem;
-    font-weight: bold;
-    color: var(--primary-red);
-}
-
-.content-card {
-    background: rgba(255,255,255,0.88);
-    backdrop-filter: blur(10px);
-    border-radius: 15px;
-    padding: 20px;
-    margin-bottom: 20px;
-    border: 1px solid rgba(255,255,255,0.3);
-}
-
-.card-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 15px;
-    padding-bottom: 10px;
-    border-bottom: 2px solid var(--primary-red);
-}
-
-.card-header h3 {
-    color: #333;
-}
-
-.view-all {
-    color: var(--primary-red);
-    font-size: 0.85rem;
-    text-decoration: none;
-}
-
-/* Assignment Item */
-.assignment-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 12px 0;
-    border-bottom: 1px solid rgba(0,0,0,0.1);
-}
-
-.assignment-item:last-child {
-    border-bottom: none;
-}
-
-.assignment-subject {
-    font-size: 0.7rem;
-    color: var(--primary-red);
-    font-weight: 600;
-    text-transform: uppercase;
-}
-
-.assignment-title {
-    font-weight: 600;
-    margin: 5px 0;
-}
-
-.assignment-due {
-    font-size: 0.7rem;
-    color: #999;
-}
-
-.assignment-status {
-    text-align: right;
-}
-
-.btn-submit {
-    background: var(--primary-red);
-    color: white;
-    padding: 6px 15px;
-    border-radius: 20px;
-    text-decoration: none;
-    font-size: 0.75rem;
-}
-
-.status-submitted, .status-graded {
-    font-size: 0.75rem;
+.stat-chip {
+    background: rgba(220, 38, 38, 0.1);
+    padding: 8px 16px;
+    border-radius: 40px;
+    font-size: 0.875rem;
     font-weight: 500;
+    color: var(--primary-red);
 }
-
-.status-submitted {
-    color: var(--success-green);
+.stat-chip i {
+    margin-right: 6px;
 }
-
-.status-graded {
-    color: #FF9800;
+.content-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+    margin-bottom: 20px;
 }
-
-/* Session Item */
+.sessions-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
 .session-item {
     display: flex;
-    justify-content: space-between;
     align-items: center;
-    padding: 12px 0;
-    border-bottom: 1px solid rgba(0,0,0,0.1);
+    gap: 16px;
+    padding: 12px;
+    background: rgba(0,0,0,0.02);
+    border-radius: 12px;
+    transition: all 0.2s;
 }
-
-.session-item:last-child {
+.session-item:hover {
+    background: rgba(0,0,0,0.04);
+}
+.session-date {
+    text-align: center;
+    background: var(--primary-red);
+    color: white;
+    border-radius: 12px;
+    padding: 8px 12px;
+    min-width: 60px;
+}
+.session-date .day {
+    font-size: 1.25rem;
+    font-weight: 700;
+    display: block;
+    line-height: 1;
+}
+.session-date .month {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+}
+.session-info {
+    flex: 1;
+}
+.session-info h4 {
+    font-size: 0.95rem;
+    margin-bottom: 4px;
+}
+.session-info p {
+    font-size: 0.75rem;
+    color: var(--gray-500);
+    margin: 2px 0;
+}
+.session-info p i {
+    width: 16px;
+    margin-right: 4px;
+}
+.session-actions {
+    text-align: right;
+}
+.progress-stats {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    padding: 16px 0;
+}
+.progress-circle {
+    position: relative;
+    width: 120px;
+    height: 120px;
+}
+.progress-circle svg {
+    width: 100%;
+    height: 100%;
+    transform: rotate(-90deg);
+}
+.progress-percent {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--primary-red);
+}
+.progress-details {
+    flex: 1;
+}
+.progress-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--gray-200);
+}
+.progress-item:last-child {
     border-bottom: none;
 }
-
-.session-info strong {
-    display: block;
+.progress-label {
+    color: var(--gray-600);
 }
-
-.session-info div {
-    font-size: 0.85rem;
-    color: #666;
-}
-
-.session-info small {
-    font-size: 0.7rem;
-    color: #999;
-}
-
-.status-badge {
-    padding: 4px 12px;
-    border-radius: 20px;
-    font-size: 0.7rem;
+.progress-value {
     font-weight: 600;
+    color: var(--gray-800);
 }
-
-.status-approved {
-    background: #4CAF50;
-    color: white;
-}
-
-/* Tutors Grid */
-.tutors-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    gap: 15px;
-    margin-top: 10px;
-}
-
 .tutor-card {
-    background: white;
-    border-radius: 12px;
-    padding: 15px;
     text-align: center;
-    border: 1px solid #eee;
+    padding: 20px;
+    background: rgba(255,255,255,0.05);
+    border-radius: 16px;
+    transition: all 0.2s;
 }
-
+.tutor-card:hover {
+    transform: translateY(-4px);
+    background: rgba(255,255,255,0.1);
+}
 .tutor-avatar {
-    width: 60px;
-    height: 60px;
+    width: 80px;
+    height: 80px;
+    margin: 0 auto 12px;
     background: linear-gradient(135deg, var(--primary-red), var(--primary-blue));
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-weight: bold;
+    font-size: 2rem;
+    font-weight: 700;
     color: var(--primary-gold);
-    margin: 0 auto 10px;
-    border: 2px solid var(--primary-gold);
     overflow: hidden;
 }
-
 .tutor-avatar img {
     width: 100%;
     height: 100%;
     object-fit: cover;
 }
-
-.tutor-card h4 {
-    margin-bottom: 5px;
+.tutor-expertise {
+    font-size: 0.8rem;
+    color: var(--gray-500);
+    margin: 8px 0;
 }
-
-.tutor-rate {
-    color: var(--success-green);
-    font-weight: bold;
+.tutor-stats {
+    display: flex;
+    justify-content: space-around;
+    margin: 16px 0;
+    padding: 12px 0;
+    border-top: 1px solid var(--gray-200);
+    border-bottom: 1px solid var(--gray-200);
 }
-
-.tutor-rating {
-    color: #FFC107;
-    font-size: 0.7rem;
-    margin-bottom: 10px;
-}
-
-.book-btn {
-    display: inline-block;
-    background: var(--primary-red);
-    color: white;
-    padding: 5px 12px;
-    border-radius: 20px;
-    text-decoration: none;
-    font-size: 0.7rem;
-}
-
-.no-data {
+.tutor-stats .stat {
     text-align: center;
-    padding: 20px;
-    color: #999;
+    font-size: 0.75rem;
 }
-
-/* Responsive */
+.tutor-stats .stat i {
+    display: block;
+    margin-bottom: 4px;
+    color: var(--primary-red);
+}
 @media (max-width: 768px) {
-    .sidebar {
-        left: -280px;
+    .content-grid {
+        grid-template-columns: 1fr;
     }
-    
-    .sidebar.active {
-        left: 0;
-    }
-    
-    .main-content {
-        margin-left: 0;
-        padding: 15px;
-    }
-    
-    .menu-toggle {
-        display: block;
-    }
-    
-    .stats-grid {
-        grid-template-columns: repeat(2, 1fr);
-    }
-    
-    .assignment-item {
+    .welcome-banner {
         flex-direction: column;
         text-align: center;
-        gap: 10px;
     }
-    
     .session-item {
+        flex-wrap: wrap;
+    }
+    .session-actions {
+        width: 100%;
+        text-align: center;
+    }
+    .progress-stats {
         flex-direction: column;
         text-align: center;
-        gap: 10px;
-    }
-    
-    .assignment-status {
-        text-align: center;
-    }
-}
-
-@media (max-width: 480px) {
-    .stats-grid {
-        grid-template-columns: 1fr;
-    }
-    
-    .tutors-grid {
-        grid-template-columns: 1fr;
     }
 }
 </style>

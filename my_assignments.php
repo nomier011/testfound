@@ -1,77 +1,93 @@
 <?php
 require_once 'config.php';
 
-if (!isLoggedIn()) {
-    redirect('login.php');
-}
+if (!isLoggedIn()) redirect('login.php');
 
 $user = getUserById($_SESSION['user_id']);
-if ($user['role'] != 'student') {
-    redirect('dashboard.php');
-}
+if (!in_array($user['role'], ['student','tutor'])) redirect('dashboard.php');
 
 $conn = getConnection();
 
-// Get all assignments for this student
-$stmt = $conn->prepare("
-    SELECT t.*, s.name as subject_name, u.full_name as tutor_name,
-           (SELECT status FROM task_submissions WHERE task_id = t.id AND student_id = ?) as submission_status,
-           (SELECT submitted_at FROM task_submissions WHERE task_id = t.id AND student_id = ?) as submitted_at,
-           (SELECT grade FROM task_submissions WHERE task_id = t.id AND student_id = ?) as grade,
-           (SELECT feedback FROM task_submissions WHERE task_id = t.id AND student_id = ?) as feedback
-    FROM tasks t
-    JOIN subjects s ON t.subject_id = s.id
-    JOIN users u ON t.tutor_id = u.id
-    WHERE t.status = 'active'
-    ORDER BY t.due_date ASC, t.created_at DESC
-");
-$stmt->execute([$user['id'], $user['id'], $user['id'], $user['id']]);
-$assignments = $stmt->fetchAll();
+if ($user['role'] === 'tutor') {
+    // Tutor sees assignments they created
+    $page_title = 'My Assignments';
+    $stmt = $conn->prepare("
+        SELECT t.*, s.name as subject_name,
+               COUNT(ts.id) as submission_count
+        FROM tasks t
+        JOIN subjects s ON t.subject_id = s.id
+        LEFT JOIN task_submissions ts ON ts.task_id = t.id
+        WHERE t.tutor_id = ?
+        GROUP BY t.id
+        ORDER BY t.created_at DESC
+    ");
+    $stmt->execute([$user['id']]);
+    $assignments = $stmt->fetchAll();
+} else {
+    // Student sees all active assignments
+    $page_title = 'My Assignments';
+    $stmt = $conn->prepare("
+        SELECT t.*, s.name as subject_name, u.full_name as tutor_name,
+               (SELECT status FROM task_submissions WHERE task_id = t.id AND student_id = ?) as submission_status,
+               (SELECT submitted_at FROM task_submissions WHERE task_id = t.id AND student_id = ?) as submitted_at,
+               (SELECT grade FROM task_submissions WHERE task_id = t.id AND student_id = ?) as grade,
+               (SELECT feedback FROM task_submissions WHERE task_id = t.id AND student_id = ?) as feedback
+        FROM tasks t
+        JOIN subjects s ON t.subject_id = s.id
+        JOIN users u ON t.tutor_id = u.id
+        WHERE t.status = 'active'
+        ORDER BY t.due_date ASC, t.created_at DESC
+    ");
+    $stmt->execute([$user['id'], $user['id'], $user['id'], $user['id']]);
+    $assignments = $stmt->fetchAll();
+}
 ?>
 
 <?php include 'header.php'; ?>
 
-<div class="dashboard-container">
-    <div class="sidebar">
-        <div class="sidebar-header">
-            <img src="images/scclogo.png" alt="SCC Logo">
-            <h3>Student Menu</h3>
-        </div>
-        <nav class="sidebar-nav">
-            <a href="student_dashboard.php" class="sidebar-link"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
-            <a href="book_session.php" class="sidebar-link"><i class="fas fa-calendar-plus"></i> Book a Tutor</a>
-            <a href="my_bookings.php" class="sidebar-link"><i class="fas fa-list-alt"></i> My Bookings</a>
-            <a href="my_assignments.php" class="sidebar-link active"><i class="fas fa-tasks"></i> My Assignments</a>
-            <a href="profile.php" class="sidebar-link"><i class="fas fa-user-circle"></i> Profile</a>
-            <a href="logout.php" class="sidebar-link logout"><i class="fas fa-sign-out-alt"></i> Logout</a>
-        </nav>
-        <div class="sidebar-footer">
-            <div class="user-info">
-                <div class="user-avatar">
-                    <?php if ($user['profile_pic']): ?>
-                        <img src="uploads/<?php echo $user['profile_pic']; ?>">
-                    <?php else: ?>
-                        <?php echo substr($user['full_name'], 0, 1); ?>
-                    <?php endif; ?>
-                </div>
-                <div>
-                    <div class="user-name"><?php echo htmlspecialchars($user['full_name']); ?></div>
-                    <div class="user-role">Student</div>
-                </div>
-            </div>
+<div class="page-wrapper">
+    <?php include 'sidebar.php'; ?>
+
+    <div class="page-hero">
+        <div class="page-hero-content">
+            <h1><?php echo $user['role'] === 'tutor' ? 'My Assignments' : 'My Assignments'; ?></h1>
+            <p><?php echo $user['role'] === 'tutor' ? 'Manage assignments you created' : 'View and submit your assignments'; ?></p>
         </div>
     </div>
-    
-    <div class="main-content">
-        <button class="menu-toggle" onclick="document.querySelector('.sidebar').classList.toggle('active')">
-            <i class="fas fa-bars"></i>
-        </button>
-        
-        <div class="welcome-banner">
-            <h1><i class="fas fa-tasks"></i> My Assignments</h1>
-            <p>View and submit your assignments</p>
+
+    <div class="page-inner">
+
+        <?php if ($user['role'] === 'tutor'): ?>
+        <!-- TUTOR VIEW -->
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+            <h3 style="font-size:1rem;font-weight:700;color:#111;"><?php echo count($assignments); ?> Assignment(s)</h3>
+            <a href="create_assignment.php" class="btn-primary btn-sm"><i class="fas fa-plus"></i> Create New</a>
         </div>
-        
+        <?php if ($assignments): ?>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;">
+            <?php foreach ($assignments as $a): ?>
+            <div class="content-card" style="margin-bottom:0;">
+                <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;gap:8px;">
+                    <h4 style="font-size:.95rem;font-weight:700;color:#111;"><?php echo htmlspecialchars($a['title']); ?></h4>
+                    <span style="background:<?php echo $a['status']==='active'?'#dcfce7':'#f3f4f6'; ?>;color:<?php echo $a['status']==='active'?'#166534':'#6b7280'; ?>;padding:2px 10px;border-radius:20px;font-size:.68rem;font-weight:700;white-space:nowrap;"><?php echo ucfirst($a['status']); ?></span>
+                </div>
+                <p style="font-size:.78rem;color:#6b7280;margin-bottom:10px;"><?php echo htmlspecialchars($a['subject_name']); ?></p>
+                <div style="display:flex;gap:14px;font-size:.75rem;color:#9ca3af;margin-bottom:14px;">
+                    <span><i class="fas fa-calendar" style="margin-right:4px;"></i><?php echo $a['due_date'] ? date('M d, Y', strtotime($a['due_date'])) : 'No deadline'; ?></span>
+                    <span><i class="fas fa-upload" style="margin-right:4px;"></i><?php echo $a['submission_count']; ?> submitted</span>
+                </div>
+                <div style="display:flex;gap:8px;">
+                    <a href="view_submissions.php?task_id=<?php echo $a['id']; ?>" class="btn-primary btn-sm"><i class="fas fa-eye"></i> View Submissions</a>
+                </div>
+            </div>
+            <?php endforeach; ?>
+        </div>
+        <?php else: ?>
+        <div class="content-card"><div class="no-data"><i class="fas fa-tasks" style="font-size:2rem;color:#d1d5db;display:block;margin-bottom:8px;"></i><p>No assignments yet. <a href="create_assignment.php" style="color:#dc2626;">Create one →</a></p></div></div>
+        <?php endif; ?>
+
+        <?php else: ?>
+        <!-- STUDENT VIEW -->
         <div class="filter-tabs">
             <button class="tab-btn active" data-filter="all">All</button>
             <button class="tab-btn" data-filter="pending">Pending</button>
@@ -140,9 +156,12 @@ $assignments = $stmt->fetchAll();
                     <p>No assignments yet. Check back later!</p>
                 </div>
             <?php endif; ?>
-        </div>
-    </div>
-</div>
+        </div><!-- /assignments-list -->
+
+        <?php endif; // end student view ?>
+
+    </div><!-- /page-inner -->
+</div><!-- /page-wrapper -->
 
 <script>
 document.querySelectorAll('.tab-btn').forEach(btn => {

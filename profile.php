@@ -13,69 +13,82 @@ $success = null;
 
 // Handle profile update
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && !isset($_FILES['profile_pic'])) {
-    $full_name = $_POST['full_name'] ?? '';
-    $phone = $_POST['phone'] ?? '';
-    $address = $_POST['address'] ?? '';
-    $bio = $_POST['bio'] ?? '';
-    
+    if (!verifyCsrfToken($_POST['csrf_token'] ?? '')) {
+        setFlash("Invalid request.", 'danger');
+        redirect('profile.php');
+    }
+
+    $full_name = trim($_POST['full_name'] ?? '');
+    $phone     = trim($_POST['phone'] ?? '');
+    $address   = trim($_POST['address'] ?? '');
+    $bio       = trim($_POST['bio'] ?? '');
+
     if ($user['role'] == 'tutor') {
-        $hourly_rate = $_POST['hourly_rate'] ?? 500;
-        $expertise = $_POST['expertise'] ?? '';
+        $hourly_rate  = sanitizeFloat($_POST['hourly_rate'] ?? 500);
+        if ($hourly_rate < 0 || $hourly_rate > 10000) { $hourly_rate = 500; }
+        $expertise    = trim($_POST['expertise'] ?? '');
         $is_available = isset($_POST['is_available']) ? 1 : 0;
-        
+
         $stmt = $conn->prepare("UPDATE users SET full_name = ?, phone = ?, address = ?, bio = ?, hourly_rate = ?, expertise = ?, is_available = ? WHERE id = ?");
         $stmt->execute([$full_name, $phone, $address, $bio, $hourly_rate, $expertise, $is_available, $user['id']]);
-        
+
         // Update subjects
         $subjects_selected = $_POST['subjects'] ?? [];
-        $stmt = $conn->prepare("DELETE FROM tutor_subjects WHERE tutor_id = ?");
-        $stmt->execute([$user['id']]);
-        
+        $conn->prepare("DELETE FROM tutor_subjects WHERE tutor_id = ?")->execute([$user['id']]);
+
         if (!empty($subjects_selected)) {
             $stmt = $conn->prepare("INSERT INTO tutor_subjects (tutor_id, subject_id) VALUES (?, ?)");
             foreach ($subjects_selected as $subject_id) {
-                $stmt->execute([$user['id'], $subject_id]);
+                $stmt->execute([$user['id'], sanitizeInt($subject_id)]);
             }
         }
     } else {
-        $year_level = $_POST['year_level'] ?? 1;
+        $year_level = sanitizeInt($_POST['year_level'] ?? 1);
         $stmt = $conn->prepare("UPDATE users SET full_name = ?, phone = ?, address = ?, bio = ?, year_level = ? WHERE id = ?");
         $stmt->execute([$full_name, $phone, $address, $bio, $year_level, $user['id']]);
     }
-    
+
     setFlash("Profile updated successfully!");
     redirect('profile.php');
 }
 
 // Handle profile picture upload
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_FILES['profile_pic'])) {
+    if (!verifyCsrfToken($_POST['csrf_token'] ?? '')) {
+        setFlash("Invalid request.", 'danger');
+        redirect('profile.php');
+    }
+
     $file = $_FILES['profile_pic'];
-    if ($file['error'] == 0) {
-        $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+    if ($file['error'] == UPLOAD_ERR_OK) {
+        $ext     = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
         $allowed = ['jpg', 'jpeg', 'png', 'gif'];
-        
-        if (in_array($ext, $allowed)) {
+        $max_size = 5 * 1024 * 1024; // 5 MB
+
+        if (!in_array($ext, $allowed)) {
+            $error = "Invalid file type. Allowed: JPG, PNG, GIF";
+        } elseif ($file['size'] > $max_size) {
+            $error = "File too large. Maximum size is 5MB.";
+        } else {
             $new_filename = time() . '_' . $user['id'] . '.' . $ext;
-            move_uploaded_file($file['tmp_name'], 'uploads/' . $new_filename);
-            
-            if ($user['profile_pic'] && file_exists('uploads/' . $user['profile_pic'])) {
-                unlink('uploads/' . $user['profile_pic']);
+            move_uploaded_file($file['tmp_name'], UPLOAD_PATH . $new_filename);
+
+            if ($user['profile_pic'] && file_exists(UPLOAD_PATH . basename($user['profile_pic']))) {
+                unlink(UPLOAD_PATH . basename($user['profile_pic']));
             }
-            
+
             $stmt = $conn->prepare("UPDATE users SET profile_pic = ? WHERE id = ?");
             $stmt->execute([$new_filename, $user['id']]);
             setFlash("Profile picture updated!");
             redirect('profile.php');
-        } else {
-            $error = "Invalid file type. Allowed: JPG, PNG, GIF";
         }
     }
 }
 
 // Handle remove picture
-if (isset($_GET['remove_pic'])) {
-    if ($user['profile_pic'] && file_exists('uploads/' . $user['profile_pic'])) {
-        unlink('uploads/' . $user['profile_pic']);
+if (isset($_GET['remove_pic']) && isLoggedIn()) {
+    if ($user['profile_pic'] && file_exists(UPLOAD_PATH . basename($user['profile_pic']))) {
+        unlink(UPLOAD_PATH . basename($user['profile_pic']));
     }
     $stmt = $conn->prepare("UPDATE users SET profile_pic = NULL WHERE id = ?");
     $stmt->execute([$user['id']]);
@@ -96,50 +109,17 @@ if ($user['role'] == 'tutor') {
 
 <?php include 'header.php'; ?>
 
-<div class="dashboard-container">
-    <div class="sidebar">
-        <div class="sidebar-header">
-            <img src="images/scclogo.png" alt="SCC Logo">
-            <h3><?php echo ucfirst($user['role']); ?> Menu</h3>
-        </div>
-        <nav class="sidebar-nav">
-            <a href="dashboard.php" class="sidebar-link"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
-            <?php if ($user['role'] == 'student'): ?>
-                <a href="book_session.php" class="sidebar-link"><i class="fas fa-calendar-plus"></i> Book a Tutor</a>
-                <a href="my_bookings.php" class="sidebar-link"><i class="fas fa-list-alt"></i> My Bookings</a>
-            <?php else: ?>
-                <a href="my_bookings.php" class="sidebar-link"><i class="fas fa-list-alt"></i> Booking Requests</a>
-            <?php endif; ?>
-            <a href="profile.php" class="sidebar-link active"><i class="fas fa-user-circle"></i> Profile</a>
-            <a href="logout.php" class="sidebar-link"><i class="fas fa-sign-out-alt"></i> Logout</a>
-        </nav>
-        <div class="sidebar-footer">
-            <div class="user-info">
-                <div class="user-avatar">
-                    <?php if ($user['profile_pic']): ?>
-                        <img src="uploads/<?php echo $user['profile_pic']; ?>">
-                    <?php else: ?>
-                        <?php echo substr($user['full_name'], 0, 1); ?>
-                    <?php endif; ?>
-                </div>
-                <div>
-                    <div class="user-name"><?php echo $user['full_name']; ?></div>
-                    <div class="user-role"><?php echo ucfirst($user['role']); ?></div>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <div class="main-content">
-        <button class="menu-toggle" onclick="document.querySelector('.sidebar').classList.toggle('active')">
-            <i class="fas fa-bars"></i>
-        </button>
-        
-        <div class="welcome-banner">
-            <h1><i class="fas fa-user-circle"></i> My Profile</h1>
+<div class="page-wrapper">
+    <?php include 'sidebar.php'; ?>
+
+    <div class="page-hero">
+        <div class="page-hero-content">
+            <h1>My Profile</h1>
             <p>Manage your personal information</p>
         </div>
-        
+    </div>
+
+    <div class="page-inner">
         <?php if ($error): ?>
             <div class="error-message"><?php echo $error; ?></div>
         <?php endif; ?>
@@ -151,13 +131,14 @@ if ($user['role'] == 'tutor') {
                 <div style="text-align: center;">
                     <div class="user-avatar" style="width: 150px; height: 150px; margin: 0 auto 20px; font-size: 3rem;">
                         <?php if ($user['profile_pic']): ?>
-                            <img src="uploads/<?php echo $user['profile_pic']; ?>" style="width: 100%; height: 100%; object-fit: cover;">
+                            <img src="uploads/<?php echo htmlspecialchars(basename($user['profile_pic'])); ?>" style="width: 100%; height: 100%; object-fit: cover;">
                         <?php else: ?>
                             <?php echo substr($user['full_name'], 0, 1); ?>
                         <?php endif; ?>
                     </div>
                     
                     <form method="POST" action="" enctype="multipart/form-data">
+                        <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars(generateCsrfToken()); ?>">
                         <input type="file" name="profile_pic" accept="image/*" style="margin-bottom: 10px;">
                         <button type="submit" class="btn-primary" style="width: 100%;">Upload Picture</button>
                     </form>
@@ -172,6 +153,7 @@ if ($user['role'] == 'tutor') {
             <div class="content-card">
                 <h3 style="margin-bottom: 15px;">Personal Information</h3>
                 <form method="POST" action="">
+                    <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars(generateCsrfToken()); ?>">
                     <div class="form-group">
                         <label>Full Name</label>
                         <input type="text" name="full_name" value="<?php echo htmlspecialchars($user['full_name']); ?>" required>

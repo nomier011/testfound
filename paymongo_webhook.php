@@ -21,28 +21,51 @@ $checkout_id = $data['data']['attributes']['data']['id'] ?? '';
 
 if ($event_type == 'checkout_session.payment_paid') {
     $conn = getConnection();
-    
-    // Find the payment record
+
+    // Find the payment record by checkout session ID
     $stmt = $conn->prepare("SELECT * FROM payments WHERE payment_intent_id = ?");
     $stmt->execute([$checkout_id]);
     $payment = $stmt->fetch();
-    
+
     if ($payment) {
-        // Update payment status
-        $stmt = $conn->prepare("UPDATE payments SET status = 'completed', payment_date = NOW() WHERE id = ?");
-        $stmt->execute([$payment['id']]);
-        
-        // Update booking
-        $stmt = $conn->prepare("UPDATE bookings SET payment_status = 'paid' WHERE id = ?");
-        $stmt->execute([$payment['booking_id']]);
-        
-        // Generate transaction ID
-        $transaction_id = 'TXN' . time() . $payment['booking_id'];
-        $stmt = $conn->prepare("UPDATE payments SET transaction_id = ? WHERE id = ?");
-        $stmt->execute([$transaction_id, $payment['id']]);
-        
-        // Log webhook receipt
-        error_log("Webhook processed for booking: " . $payment['booking_id']);
+        try {
+            $conn->beginTransaction();
+
+            // Update payment record
+            $txn_number = 'TXN-WH-' . time() . '-' . $payment['booking_id'];
+            $stmt = $conn->prepare("UPDATE payments SET status = 'completed', payment_date = NOW(), transaction_number = ? WHERE id = ?");
+            $stmt->execute([$txn_number, $payment['id']]);
+
+            // Update booking — set BOTH payment_status AND status
+            $stmt = $conn->prepare("UPDATE bookings SET payment_status = 'paid', status = 'approved' WHERE id = ?");
+            $stmt->execute([$payment['booking_id']]);
+
+            // Notify the student
+            $bStmt = $conn->prepare("SELECT b.*, u.full_name as tutor_name FROM bookings b JOIN users u ON b.tutor_id = u.id WHERE b.id = ?");
+            $bStmt->execute([$payment['booking_id']]);
+            $booking = $bStmt->fetch();
+            if ($booking) {
+                $conn->prepare("INSERT INTO notifications (user_id, message, type) VALUES (?, ?, 'payment')")
+                     ->execute([
+                         $booking['student_id'],
+                         "✅ Payment confirmed for your session with {$booking['tutor_name']} on " . date('M d, Y', strtotime($booking['booking_date'])) . ". Your booking is now active."
+                     ]);
+                // Notify tutor
+                $conn->prepare("INSERT INTO notifications (user_id, message, type) VALUES (?, ?, 'payment')")
+                     ->execute([
+                         $booking['tutor_id'],
+                         "💰 Payment received for session on " . date('M d, Y', strtotime($booking['booking_date'])) . ". Booking #" . $booking['booking_number'] . " is now active."
+                     ]);
+            }
+
+            $conn->commit();
+            error_log("Webhook processed for booking: " . $payment['booking_id']);
+        } catch (PDOException $e) {
+            $conn->rollBack();
+            error_log("Webhook DB error: " . $e->getMessage());
+            http_response_code(500);
+            exit('DB error');
+        }
     }
 }
 

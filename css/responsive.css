@@ -1,0 +1,170 @@
+/* ========================================
+   RESPONSIVE STYLES
+   ======================================== */
+
+/* Tablet Landscape */
+@media (max-width: 1024px) {
+    .tutors-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+/* Tablet Portrait */
+@media (max-width: 768px) {
+    .sidebar {
+        width: 260px;
+    }
+    
+    .main-content {
+        margin-left: 0;
+        padding: 16px;
+    }
+    
+    .menu-toggle {
+        display: flex;
+    }
+    
+    .welcome-banner {
+        padding: 20px;
+    }
+    
+    .welcome-banner h1 {
+        font-size: 1.25rem;
+    }
+    
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+    }
+    
+    .stat-card {
+        padding: 16px;
+    }
+    
+    .stat-icon {
+        width: 44px;
+        height: 44px;
+        font-size: 1.25rem;
+    }
+    
+    .stat-number {
+        font-size: 1.5rem;
+    }
+    
+    .tutors-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .content-card {
+        padding: 20px;
+    }
+    
+    .card-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+    
+    /* Tables - horizontal scroll on mobile */
+    .table-responsive {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+    
+    .user-table, .sessions-table, .grades-table {
+        min-width: 600px;
+    }
+    
+    /* Filter section */
+    .filter-section {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .filter-select, .filter-input {
+        width: 100%;
+    }
+    
+    /* Booking cards */
+    .booking-card, .request-card {
+        flex-direction: column;
+    }
+    
+    .booking-actions, .request-actions {
+        width: 100%;
+        justify-content: center;
+        margin-top: 12px;
+    }
+}
+
+/* Mobile */
+@media (max-width: 480px) {
+    .stats-grid {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+    
+    .welcome-banner {
+        padding: 16px;
+    }
+    
+    .content-card {
+        padding: 16px;
+    }
+    
+    .filter-tabs {
+        flex-wrap: wrap;
+    }
+    
+    .tab-btn {
+        padding: 6px 12px;
+        font-size: 0.75rem;
+    }
+    
+    .status-badge {
+        font-size: 0.65rem;
+        padding: 2px 8px;
+    }
+    
+    .btn-primary, .btn-secondary {
+        padding: 8px 16px;
+        font-size: 0.875rem;
+    }
+    
+    .modal-content {
+        padding: 20px;
+        width: 95%;
+    }
+    
+    .star-rating label {
+        font-size: 1.5rem;
+    }
+}
+
+/* Small Mobile */
+@media (max-width: 360px) {
+    .main-content {
+        padding: 12px;
+    }
+    
+    .stat-card {
+        gap: 12px;
+    }
+    
+    .stat-icon {
+        width: 40px;
+        height: 40px;
+    }
+    
+    .stat-number {
+        font-size: 1.25rem;
+    }
+    
+    .sidebar {
+        width: 240px;
+    }
+}

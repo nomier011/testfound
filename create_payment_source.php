@@ -8,54 +8,60 @@ if (!isLoggedIn()) {
     exit();
 }
 
-$data = json_decode(file_get_contents('php://input'), true);
-$payment_intent_id = $data['payment_intent_id'] ?? '';
-$amount = $data['amount'] ?? 0;
-$payment_method = $data['payment_method'] ?? '';
-$booking_id = $data['booking_id'] ?? 0;
-$student_name = $data['student_name'] ?? '';
-$student_email = $data['student_email'] ?? '';
+$data              = json_decode(file_get_contents('php://input'), true);
+$payment_intent_id = trim($data['payment_intent_id'] ?? '');
+$amount            = sanitizeFloat($data['amount'] ?? 0);
+$payment_method    = trim($data['payment_method'] ?? '');
+$booking_id        = sanitizeInt($data['booking_id'] ?? 0);
+$student_name      = trim($data['student_name'] ?? '');
+$student_email     = trim($data['student_email'] ?? '');
 
-if (!$payment_intent_id || !$payment_method) {
+if (!$payment_intent_id || !$payment_method || !$booking_id) {
     echo json_encode(['success' => false, 'error' => 'Missing parameters']);
     exit();
 }
 
-// Map payment method to PayMongo source type
-$source_type = '';
-switch ($payment_method) {
-    case 'gcash':
-        $source_type = 'gcash';
-        break;
-    case 'paymaya':
-        $source_type = 'paymaya';
-        break;
-    case 'grab_pay':
-        $source_type = 'grab_pay';
-        break;
-    default:
-        echo json_encode(['success' => false, 'error' => 'Invalid payment method']);
-        exit();
+// Validate payment method against server-side whitelist
+$allowed_source_types = ['gcash', 'paymaya', 'grab_pay'];
+if (!in_array($payment_method, $allowed_source_types, true)) {
+    echo json_encode(['success' => false, 'error' => 'Invalid payment method']);
+    exit();
 }
 
-// Create a payment source
-$url = PAYMONGO_BASE_URL . "/payment_intents/" . $payment_intent_id . "/sources";
+// Verify booking ownership and amount matches
+$conn = getConnection();
+$stmt = $conn->prepare("SELECT amount FROM bookings WHERE id = ? AND student_id = ?");
+$stmt->execute([$booking_id, $_SESSION['user_id']]);
+$booking = $stmt->fetch();
 
+if (!$booking) {
+    echo json_encode(['success' => false, 'error' => 'Booking not found']);
+    exit();
+}
+
+// Validate amount matches booking record (prevent tampering)
+if (abs($booking['amount'] - $amount) > 0.01) {
+    echo json_encode(['success' => false, 'error' => 'Amount mismatch']);
+    exit();
+}
+
+// Create a payment source via PayMongo
+$url          = PAYMONGO_BASE_URL . "/payment_intents/" . urlencode($payment_intent_id) . "/sources";
 $amount_cents = intval($amount * 100);
 
 $payload = [
     "data" => [
         "attributes" => [
-            "type" => $source_type,
-            "amount" => $amount_cents,
+            "type"     => $payment_method,
+            "amount"   => $amount_cents,
             "currency" => "PHP",
             "redirect" => [
                 "success" => SITE_URL . "payment_success.php?booking_id=" . $booking_id,
-                "failed" => SITE_URL . "payment_failed.php?booking_id=" . $booking_id
+                "failed"  => SITE_URL . "payment_failed.php?booking_id=" . $booking_id
             ],
             "billing" => [
-                "name" => $student_name,
-                "email" => $student_email
+                "name"  => substr($student_name, 0, 255),
+                "email" => filter_var($student_email, FILTER_SANITIZE_EMAIL)
             ]
         ]
     ]
@@ -64,6 +70,7 @@ $payload = [
 $ch = curl_init($url);
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 curl_setopt($ch, CURLOPT_POST, true);
+curl_setopt($ch, CURLOPT_TIMEOUT, 20);
 curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
 curl_setopt($ch, CURLOPT_HTTPHEADER, [
     "Content-Type: application/json",
@@ -71,32 +78,36 @@ curl_setopt($ch, CURLOPT_HTTPHEADER, [
 ]);
 
 $response = curl_exec($ch);
-$httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+$httpCode  = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+$curl_err  = curl_errno($ch);
 curl_close($ch);
 
+if ($curl_err) {
+    error_log("PayMongo cURL error (create_payment_source): " . $curl_err);
+    echo json_encode(['success' => false, 'error' => 'Could not reach payment provider']);
+    exit();
+}
+
 if ($httpCode == 200 || $httpCode == 201) {
-    $result = json_decode($response, true);
-    
-    // Get the redirect URL
+    $result      = json_decode($response, true);
     $redirect_url = $result['data']['attributes']['redirect']['checkout_url'] ?? null;
-    
+
     if ($redirect_url) {
-        // Save the source ID to database
-        $conn = getConnection();
         $source_id = $result['data']['id'];
         $stmt = $conn->prepare("UPDATE payments SET transaction_id = ? WHERE booking_id = ?");
         $stmt->execute([$source_id, $booking_id]);
-        
+
         echo json_encode(['success' => true, 'redirect_url' => $redirect_url]);
     } else {
         echo json_encode(['success' => false, 'error' => 'No redirect URL received']);
     }
 } else {
     $error_msg = 'Failed to create payment source';
-    $result = json_decode($response, true);
+    $result    = json_decode($response, true);
     if (isset($result['errors'][0]['detail'])) {
         $error_msg = $result['errors'][0]['detail'];
     }
+    error_log("PayMongo error response: " . $response);
     echo json_encode(['success' => false, 'error' => $error_msg]);
 }
 ?>
